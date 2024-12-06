@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Videos</title>
+</head>
+<body>
+    <h1>Video Table</h1>
+    <form action="/video_table" method="post">
+        <input type="text" name="search" id="search" placeholder="Search (case sensitive)" size="70" value="{{ query }}"></input>
+        <button title="Clear search bar" type="button" class="clear" onclick="document.getElementById('search').value=''" style="color:red">X</button>
+        <button type="submit">Search</button>
+        <label><input type="checkbox" name="embed" id="embed" {{ ticked }}> Semantic Search</input></label>
+    </form>
+    <br>
+    {% if video_table %}
+    <table border="1">
+        <tr>
+            <th>Id</th>
+            <th>Title</th>
+            <th>URL</th>
+        </tr>
+        {% for row in video_table %}
+        <tr>
+            <td>{{ row.Id }}</td>
+            <td>{{ row.Title }}</td>
+            <td><a href="{{ row.URL }}">{{ row.URL }}</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No videos found</p>
+    {% endif %}
+</body>
+</html>

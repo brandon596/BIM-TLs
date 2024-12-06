@@ -27,5 +27,4 @@ def process_yt_playlist(raw_vid_items: list, id_start: int):
     return [{"Id": idx+id_start, "Title": item["snippet"]["title"], "Description": item["snippet"]["description"], "Video URL": "https://youtu.be/" + item["snippet"]["resourceId"]["videoId"], "Page URL": "https://www.youtube.com/watch?v=" + item["snippet"]["resourceId"]["videoId"]} for idx, item in enumerate(raw_vid_items)]
 
 def get_processed_playlist(playlist_id: str, api_key: str, id_start: int=24):
-    print("Getting playlist")
     return process_yt_playlist(get_yt_playlist(playlist_id, api_key), id_start)
