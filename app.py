@@ -1,13 +1,20 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_file
+from flask_httpauth import HTTPBasicAuth
+from werkzeug.security import check_password_hash
 import json
 import chromadb
 import numpy as np
 from yt_playlist_retriever import get_processed_playlist
 import os
-from logger import logger
+from logger import logger, parse_log_folder_files
+from collections import Counter
+import time
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY")
+
+users = {"admin": "scrypt:32768:8:1$wdpOQdG4K7Lya4Bz$417372fabc80cc94730375d408800b09ac3a584664744a0b455f649bbe8d9cb75f156803877ff0cb3addcea180551384445570455a75623d1050bbe410c4df7c"}
+auth = HTTPBasicAuth()
 
 AUTODESK_VID_PATH: str = "json_data/Autodesk_Videos.json"
 YT_API_KEY: str = os.environ.get("YOUTUBE_DATA_API_KEY")
@@ -15,13 +22,21 @@ PLAYLIST_ID: str = os.environ.get("PLAYLIST_ID")
 temperature:float=0.0715
 threshold:float=0.389
 
-# Revit Doc id ends at 23, youtube videos starts at 24
+
+@auth.verify_password
+def verify_password(username, password):
+    if username in users and \
+            check_password_hash(users.get(username), password):
+        return username
 
 def create_collection(chroma_client):
-    collection = chroma_client.create_collection(
+    created_collection = chroma_client.create_collection(
         name="Video_Titles_Embeddings",
         metadata={"hnsw:space": "cosine"}
     )
+    return created_collection
+
+def load_collection(collection):
     with open(AUTODESK_VID_PATH, "r") as file:
         video_links = json.load(file)
     yt_id_start = len(video_links)+1
@@ -30,12 +45,12 @@ def create_collection(chroma_client):
     metadatas = []
     for row in video_links:
         titles.append(row["Title"].strip())
-        metadatas.append({"URL": row["Video URL"], "Source": row["Page URL"], "actual_id": row["Id"], "isTitle": True, "byAutodesk": True if row["Id"] < yt_id_start else False})
+        metadatas.append({"URL": row["Video_URL"], "Source": row["Page_URL"], "actual_id": row["Id"], "isTitle": True, "onYoutube": True if row["Id"] >= yt_id_start else False})
         if row["Description"] != "":
             alt_titles = row["Description"].split(" | ")
             for title in alt_titles:
                 titles.append(title.strip())
-                metadatas.append({"URL": row["Video URL"], "Source": row["Page URL"], "actual_id": row["Id"], "isTitle": False, "byAutodesk": True if row["Id"] < yt_id_start else False})
+                metadatas.append({"URL": row["Video_URL"], "Source": row["Page_URL"], "actual_id": row["Id"], "isTitle": False, "onYoutube": True if row["Id"] >= yt_id_start else False})
     ids = [str(i+1) for i in range(len(titles))]
     collection.upsert(
         documents=titles,
@@ -49,11 +64,13 @@ def initialise_db():
     try:
         collection = chroma_client.get_collection("Video_Titles_Embeddings")
     except chromadb.errors.InvalidCollectionException:
-        collection = create_collection(chroma_client)
+        empty_collection = create_collection(chroma_client)
+        collection = load_collection(empty_collection)
         logger.info("Collection created")
-    return collection
+    return collection, chroma_client
 
-collection = initialise_db()
+collection, client = initialise_db()
+os.makedirs("sent", exist_ok=True)
 
 def invert_and_softmax(arr:list):
     arr = (1-np.array(arr))/temperature
@@ -163,6 +180,39 @@ def simple_search(query):
         )
     return [{"Id": i["actual_id"], "Title": document, "URL": url["Source"]} for i, document, url in zip(results["metadatas"], results["documents"], results["metadatas"])]
 
+
+# Load JSON data
+def load_data(current_user):
+    user_autodest_vid_file_path = f"json_data/{current_user}_Autodesk_Videos_temp.json"
+    if os.path.exists(user_autodest_vid_file_path):
+        with open(user_autodest_vid_file_path, 'r') as file:
+            return json.load(file)
+    else:
+        with open(AUTODESK_VID_PATH, 'r') as file:
+            return json.load(file)
+
+# Save JSON data to a temporary file
+def save_data(data, current_user):
+    with open(f'json_data/{current_user}_Autodesk_Videos_temp.json', 'w') as file:
+        json.dump(data, file, indent=4)
+
+def replace_data_with_temp(current_user):
+    with open(AUTODESK_VID_PATH, 'w') as file:
+        with open(f'json_data/{current_user}_Autodesk_Videos_temp.json', 'r') as temp_file:
+            new_data = json.load(temp_file)
+            reindexed_date = reindex_data(new_data)
+        json.dump(reindexed_date, file, indent=4)
+    os.remove(f'json_data/{current_user}_Autodesk_Videos_temp.json')
+
+def reindex_data(data):
+    for i, video in enumerate(data):
+        video['Id'] = i + 1
+    return data
+
+def tempDataIsDifferent(current_user):
+    with open(AUTODESK_VID_PATH, 'r') as file:
+        return load_data(current_user) != json.load(file)
+
 #Routes
 @app.route('/api/semantic_search', methods=["POST"])
 def semantic_searh():
@@ -181,31 +231,98 @@ def semantic_searh():
 
 @app.route("/")
 def home():
-    pass
+    
+    return render_template("home.html")
 
-@app.route("/get_query_logs")
+@app.route("/downloads/json_logs")
+@auth.login_required
+def download_json_logs():
+    log_list = parse_log_folder_files()
+    with open("sent/query_logs.json", "w") as file:
+        json.dump(log_list, file, indent=4)
+    return send_file("sent/query_logs.json", as_attachment=True, download_name="query_logs.json")
+
+@app.route("/get_query_logs", methods=["GET"])
+@auth.login_required
 def get_query_logs():
-    pass
+    log_list = parse_log_folder_files()
+    titles_list = []
+    for log in log_list:
+        replaced_blanks = [title or "No videos found" for title in log["Titles"]]
+        titles_list += replaced_blanks
+    title_counter = Counter(titles_list)
+    return render_template("get_logs.html", logs=json.dumps(log_list, indent=4), title_counter=title_counter)
 
 
 @app.route("/video_table", methods=["GET","POST"])
 def all_videos():
-    # if request.method == "POST":
     query = request.form.get("search")
     toEmbed = request.form.get("embed")
     if toEmbed:
         toEmbed = "checked"
-    print(query)
     if query and not toEmbed:
         return render_template("table.html", video_table=simple_search(query), query=query, ticked=toEmbed)
     elif query and toEmbed:
         return render_template("table.html", video_table=query_db(query).get("asRows"), query=query, ticked=toEmbed)
-    # if request.method == "GET":
     elif get_all_videos():
-        return render_template("table.html", video_table=get_all_videos(), query=query, ticked=toEmbed)
+        return render_template("table.html", video_table=get_all_videos(), ticked=toEmbed)
     else:
         return render_template("table.html")
 
+@app.route('/manage_videos')
+@auth.login_required
+def manage_videos():
+    if os.path.exists(f'json_data/{auth.current_user()}_Autodesk_Videos_temp.json'):
+        os.remove(f'json_data/{auth.current_user()}_Autodesk_Videos_temp.json')
+    data = load_data(auth.current_user())
+    return render_template('manage_videos.html', videos=data)
+
+@app.route('/add', methods=['POST'])
+@auth.login_required
+def add_video():
+    data = load_data(auth.current_user())
+    new_video = request.json
+    new_video['Id'] = max(video['Id'] for video in data) + 1 if data else 1
+    data.append(new_video)
+    save_data(data, auth.current_user())
+    return jsonify(new_video), 201
+
+@app.route('/edit/<int:video_id>', methods=['POST'])
+@auth.login_required
+def edit_video(video_id):
+    data = load_data(auth.current_user())
+    video = next((video for video in data if video['Id'] == video_id), None)
+    if not video:
+        return jsonify({'error': 'Video not found'}), 404
+    video.update(request.json)
+    save_data(data, auth.current_user())
+    return jsonify(video)
+
+@app.route('/delete/<int:video_id>', methods=['POST'])
+@auth.login_required
+def delete_video(video_id):
+    data = load_data(auth.current_user())
+    data = [video for video in data if video['Id'] != video_id]
+    save_data(data, auth.current_user())
+    return jsonify({'message': 'Video deleted'})
+
+@app.route('/commit', methods=['POST'])
+@auth.login_required
+def commit_changes():
+    global collection, client
+    # Here you can add logic to commit changes, e.g., save to a backup file or log changes
+    if os.path.exists(f'json_data/{auth.current_user()}_Autodesk_Videos_temp.json') and tempDataIsDifferent(auth.current_user()):
+        replace_data_with_temp(auth.current_user())
+        #too lazy and can't be bothered, so just delete the collection and recreate it
+        client.delete_collection("Video_Titles_Embeddings")
+        empty_collection = create_collection(client)
+        collection = load_collection(empty_collection)
+        time.sleep(1)
+        logger.info("Collection updated")
+        logger.info(f"Changes to Autodesk Videos committed by {auth.current_user()}")
+        return jsonify({'message': 'Changes committed'})
+    else:
+        return jsonify({'error': 'No changes to commit'}), 404
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0")

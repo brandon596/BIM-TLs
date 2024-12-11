@@ -159,12 +159,5 @@
         "Description": "Schedule Sheets",
         "Video_URL": "https://help.autodesk.com/videos/1qMjQydToBDrQDfU46YC6wpmc2zlJLNM/video.webm",
         "Page_URL": "https://help.autodesk.com/view/RVT/2023/ENU/?guid=GUID-0BEB9F89-0997-4E39-8F87-3E70FEA669AE"
-    },
-    {
-        "Title": "Printing",
-        "Description": "Set up a printer and modify the settings to print your views and sheets. This video demonstrates the following: Select a printer. Specify the view and sheets to print. Set the printing options.",
-        "Video_URL": "https://help.autodesk.com/videos/ZwcGh1MzE6SNhqNEiaZ9CrU1IGv-1vUy/video.webm",
-        "Page_URL": "https://help.autodesk.com/view/RVT/2023/ENU/?guid=GUID-4EDFE3F4-D965-4B01-8CE7-B75A5CCBDE73",
-        "Id": 24
     }
 ]

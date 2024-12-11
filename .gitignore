@@ -3,3 +3,5 @@
 chroma/
 logs/
 __pycache__/
+sent/
+generate_hash.py

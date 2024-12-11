@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Query Logs{% endblock %}
+{% block content %}
+<h1>Query Logs</h1>
+<p>These are the logs of the queries that have been made to the chatbot</p>
+<h2>JSON Query Logs</h2>
+<div class="scroll_box">
+    <pre>
+        {{ logs|safe }}
+    </pre>
+</div>
+<form action="/downloads/json_logs" method="get">
+    <button type="submit" id="download" value="download">Download JSON</button>
+</form>
+<br>
+<h2>Most Common Video Titles Retrieved</h2>
+<div class="scroll_box">
+    <table>
+        <tr>
+            <th>Title</th>
+            <th>Count</th>
+        </tr>
+        {% for title, count in title_counter.most_common() %}
+        <tr>
+            <td>{{ title }}</td>
+            <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

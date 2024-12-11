@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Manage Videos{% endblock %}
+{% block content %}
+<h1>Autodesk Videos</h1>
+<p>To cancel your changes (if you haven't yet commit changes), please refresh the page.</p>
+<p><strong>WARNING:</strong> only have <strong>MAX ONE PERSON ON THIS PAGE AT ANY GIVEN TIME or DONT EVEN OPEN THIS PAGE.</strong></p>
+<div id="video-list">
+    {% for video in videos %}
+    <div class="video-item" data-id="{{ video.Id }}">
+        <h2>{{ video.Title }}</h2>
+        <p>{{ video.Description }}</p>
+        <a href="{{ video.Video_URL }}" target="_blank">Video Download Link</a>
+        <a href="{{ video.Page_URL }}" target="_blank">Watch Video</a>
+        <button class="edit-btn">Edit</button>
+        <button class="delete-btn">Delete</button>
+    </div>
+    {% endfor %}
+</div>
+
+<h2>Add New Autodesk Video</h2>
+<form id="add-form">
+    <input type="text" id="add-title" placeholder="Title" required>
+    <textarea id="add-description" placeholder="Description or alternate titles (use ' | ' to seperate extra titles eg. Title 1 | Title 2)"></textarea>
+    <input type="url" id="add-video-url" placeholder="Video URL" required>
+    <input type="url" id="add-page-url" placeholder="Page URL" required>
+    <button type="submit">Add Video</button>
+</form>
+
+<button id="commit-btn" title="Changes are PERMANENT. Check before committing">Commit Changes</button>
+<div class="loading" id="loading-screen">Loading&#8230;</div>
+<p><strong>DO NOT SPAM THE RED BUTTON. </strong></p>
+
+
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}
