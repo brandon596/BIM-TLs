@@ -5,3 +5,4 @@ logs/
 __pycache__/
 sent/
 generate_hash.py
+users.json

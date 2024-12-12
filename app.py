@@ -13,7 +13,8 @@ import time
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY")
 
-users = {"admin": "scrypt:32768:8:1$wdpOQdG4K7Lya4Bz$417372fabc80cc94730375d408800b09ac3a584664744a0b455f649bbe8d9cb75f156803877ff0cb3addcea180551384445570455a75623d1050bbe410c4df7c"}
+with open("users.json", "r") as file:
+    users = json.load(file)
 auth = HTTPBasicAuth()
 
 AUTODESK_VID_PATH: str = "json_data/Autodesk_Videos.json"
