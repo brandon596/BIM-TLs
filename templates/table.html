@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Search Videos{% endblock %}
+{% block active_table %}active{% endblock %}
 {% block content %}
 <h1>Video Table</h1>
 <form action="/video_table" method="post">
-    <input type="text" name="search" id="search" placeholder="Search (case sensitive)" size="60" value="{{ query }}">
+    <input type="text" name="search" id="search" placeholder="Search (case sensitive)" value="{{ query }}">
     <div class="form-group">
         <button title="Clear search bar" type="button" class="clear" onclick="document.getElementById('search').value=''">Clear</button>
         <button type="submit">Search</button>

@@ -26,3 +26,7 @@ def parse_log_folder_files():
                 lines += file.readlines()
 
     return [json.loads(line) for line in lines if "Query received" in line]
+
+def parse_all_logs():
+    with open("logs/app.log", "r") as file:
+        return file.read()

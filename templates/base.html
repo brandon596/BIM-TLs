@@ -7,14 +7,16 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <nav>
+    <nav class="navbar">
         <ul>
-            <li><a href="/">Home</a></li>
-            <li><a href="/video_table">Search Videos</a></li>
-            <li><a href="/get_query_logs">Query Logs</a></li>
-            <li><a href="/manage_videos">Manage Videos</a></li>
+            <li><a href="/" class="{% block active_home %}{% endblock %}">Home</a></li>
+            <li><a href="/video_table" class="{% block active_table %}{% endblock %}">Search Videos</a></li>
+            <li><a href="/logs" class="{% block active_logs %}{% endblock %}">Logs</a></li>
+            <li><a href="/manage_videos" class="{% block active_manage %}{% endblock %}">Manage Videos</a></li>
         </ul>
     </nav>
+    <main>
     {% block content %}{% endblock %}
+    </main>
 </body>
 </html>

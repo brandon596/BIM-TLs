@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Manage Videos{% endblock %}
+{% block active_manage %}active{% endblock %}
 {% block content %}
 <h1>Autodesk Videos</h1>
 <p>To cancel your changes (if you haven't yet commit changes), please refresh the page.</p>
-<p><strong>WARNING:</strong> only have <strong>MAX ONE PERSON ON THIS PAGE AT ANY GIVEN TIME or DONT EVEN OPEN THIS PAGE.</strong></p>
+<p>
+    Ideally, there should only be a maximum of one person making and <strong>committing</strong> changes at any given time. 
+    Remember to press the <a href="#commit-btn">commit button</a> after you have made changes to the Autodesk videos and/or the <a href="#yt-section">Youtube videos</a>.
+</p>
 <div id="video-list">
     {% for video in videos %}
     <div class="video-item" data-id="{{ video.Id }}">
@@ -26,11 +30,18 @@
     <button type="submit">Add Video</button>
 </form>
 
+<h1 id="yt-section">YouTube Videos</h1>
+<p>
+    To manage the Youtube videos go to the <a href="https://studio.youtube.com/" target="_blank">Youtube Studio</a> to add, edit or delete videos. When adding new videos, make sure that you select the Revit MEP playlist.
+    The video Description will be used to give the video alternate titles or provide more information and context to improve search results (use ' | ' to seperate extra titles or information eg. Title 1 | Title 2 | some context). You can also just leave it blank.
+</p>
+<p>If you only want to temporarily remove videos, which is recommended, go to the <a href="https://www.youtube.com/playlist?list=PL2KGy-TyLFXZyWk7frVvUHrFtjCl9mWLl" target="_blank">Youtube Playlist</a> and remove the videos you want to remove by clicking on the 3 dots beside the video.</p>
+<p>Only the youtube videos inside the <a href="https://www.youtube.com/playlist?list=PL2KGy-TyLFXZyWk7frVvUHrFtjCl9mWLl" target="_blank">Revit MEP</a> playlist will be used.</p>
+<p>After you have made changes to the playlist and/or the Autodesk videos, you need to press the button below to update the database.</p>
+
 <button id="commit-btn" title="Changes are PERMANENT. Check before committing">Commit Changes</button>
 <div class="loading" id="loading-screen">Loading&#8230;</div>
-<p><strong>DO NOT SPAM THE RED BUTTON. </strong></p>
-
-
+<p>Don't press the commit button if there are no changes made. ¯\_(ツ)_/¯</p>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 {% endblock %}

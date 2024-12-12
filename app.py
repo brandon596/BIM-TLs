@@ -6,7 +6,7 @@ import chromadb
 import numpy as np
 from yt_playlist_retriever import get_processed_playlist
 import os
-from logger import logger, parse_log_folder_files
+from logger import logger, parse_log_folder_files, parse_all_logs
 from collections import Counter
 import time
 
@@ -36,11 +36,12 @@ def create_collection(chroma_client):
     )
     return created_collection
 
-def load_collection(collection):
+def load_empty_collection(empty_collection):
     with open(AUTODESK_VID_PATH, "r") as file:
         video_links = json.load(file)
     yt_id_start = len(video_links)+1
-    video_links += get_processed_playlist(PLAYLIST_ID, YT_API_KEY, yt_id_start)
+    yt_vids_links = get_processed_playlist(PLAYLIST_ID, YT_API_KEY, yt_id_start)
+    video_links += yt_vids_links
     titles = []
     metadatas = []
     for row in video_links:
@@ -52,12 +53,44 @@ def load_collection(collection):
                 titles.append(title.strip())
                 metadatas.append({"URL": row["Video_URL"], "Source": row["Page_URL"], "actual_id": row["Id"], "isTitle": False, "onYoutube": True if row["Id"] >= yt_id_start else False})
     ids = [str(i+1) for i in range(len(titles))]
-    collection.upsert(
+    empty_collection.add(
         documents=titles,
         ids=ids,
         metadatas=metadatas
     )
-    return collection
+    return empty_collection #its not empty here if everything above goes well
+
+def upsert_collection(new_collection):
+    old_ids = set(new_collection.get(
+        include=["documents"]
+    ).get("ids"))
+
+    with open(AUTODESK_VID_PATH, "r") as file:
+        video_links = json.load(file)
+    yt_id_start = len(video_links)+1
+    yt_vids_links = get_processed_playlist(PLAYLIST_ID, YT_API_KEY, yt_id_start)
+    video_links += yt_vids_links
+    titles = []
+    metadatas = []
+    for row in video_links:
+        titles.append(row["Title"].strip())
+        metadatas.append({"URL": row["Video_URL"], "Source": row["Page_URL"], "actual_id": row["Id"], "isTitle": True, "onYoutube": True if row["Id"] >= yt_id_start else False})
+        if row["Description"] != "":
+            alt_titles = row["Description"].split(" | ")
+            for title in alt_titles:
+                titles.append(title.strip())
+                metadatas.append({"URL": row["Video_URL"], "Source": row["Page_URL"], "actual_id": row["Id"], "isTitle": False, "onYoutube": True if row["Id"] >= yt_id_start else False})
+    ids = [str(i+1) for i in range(len(titles))]
+    new_collection.upsert(
+        documents=titles,
+        ids=ids,
+        metadatas=metadatas
+    )
+    new_ids = set(ids)
+    toBeDeletedIds = list(old_ids - new_ids)
+    if toBeDeletedIds:
+        new_collection.delete(ids=toBeDeletedIds)
+    return new_collection
 
 def initialise_db():
     chroma_client = chromadb.PersistentClient(path="chroma")
@@ -65,11 +98,11 @@ def initialise_db():
         collection = chroma_client.get_collection("Video_Titles_Embeddings")
     except chromadb.errors.InvalidCollectionException:
         empty_collection = create_collection(chroma_client)
-        collection = load_collection(empty_collection)
+        collection = load_empty_collection(empty_collection)
         logger.info("Collection created")
-    return collection, chroma_client
+    return collection
 
-collection, client = initialise_db()
+collection = initialise_db()
 os.makedirs("sent", exist_ok=True)
 
 def invert_and_softmax(arr:list):
@@ -114,8 +147,9 @@ def get_outputs(unique_actual_ids):
 def query_db(queery):
     results = collection.query(
         query_texts=queery,
-        n_results=collection.count()
+        n_results=10
     )
+    print(collection.count())
     rowed_output = None
     results.get("distances")[0] = invert_and_softmax(results.get("distances")[0])
     unique_actual_ids = get_unique_actual_ids(results)
@@ -242,16 +276,17 @@ def download_json_logs():
         json.dump(log_list, file, indent=4)
     return send_file("sent/query_logs.json", as_attachment=True, download_name="query_logs.json")
 
-@app.route("/get_query_logs", methods=["GET"])
+@app.route("/logs", methods=["GET"])
 @auth.login_required
 def get_query_logs():
     log_list = parse_log_folder_files()
+    all_logs = parse_all_logs()
     titles_list = []
     for log in log_list:
         replaced_blanks = [title or "No videos found" for title in log["Titles"]]
         titles_list += replaced_blanks
     title_counter = Counter(titles_list)
-    return render_template("get_logs.html", logs=json.dumps(log_list, indent=4), title_counter=title_counter)
+    return render_template("get_logs.html", logs=json.dumps(log_list, indent=4), title_counter=title_counter, all_logs=all_logs)
 
 
 @app.route("/video_table", methods=["GET","POST"])
@@ -309,20 +344,16 @@ def delete_video(video_id):
 @app.route('/commit', methods=['POST'])
 @auth.login_required
 def commit_changes():
-    global collection, client
+    global collection
     # Here you can add logic to commit changes, e.g., save to a backup file or log changes
     if os.path.exists(f'json_data/{auth.current_user()}_Autodesk_Videos_temp.json') and tempDataIsDifferent(auth.current_user()):
         replace_data_with_temp(auth.current_user())
-        #too lazy and can't be bothered, so just delete the collection and recreate it
-        client.delete_collection("Video_Titles_Embeddings")
-        empty_collection = create_collection(client)
-        collection = load_collection(empty_collection)
-        time.sleep(1)
-        logger.info("Collection updated")
-        logger.info(f"Changes to Autodesk Videos committed by {auth.current_user()}")
-        return jsonify({'message': 'Changes committed'})
-    else:
-        return jsonify({'error': 'No changes to commit'}), 404
+    collection = upsert_collection(collection)
+    time.sleep(1)
+    logger.info("Collection updated")
+    logger.info(f"Changes committed by {auth.current_user()}")
+    return jsonify({'message': 'Changes committed'})
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

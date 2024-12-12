@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (response.ok) {
             alert('Changes committed');
         } else {
-            alert('Failed to commit changes. \nPossible reasons: \nYou have not not made any changes, or ¯\\_(ツ)_/¯');
+            alert('Failed to commit changes. Check the logs could be wrong/expired API key, wrong playlist Id ¯\\_(ツ)_/¯');
         }
         
     });

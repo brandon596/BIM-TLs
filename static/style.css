@@ -1,34 +1,59 @@
-ul {
+.navbar ul {
     list-style-type: none;
+    background-color: rgb(49, 49, 49);
     margin: 0;
     padding: 0;
+    overflow: hidden;
   }
   
-  li {
-    display: inline;
-  }
-  li a {
+.navbar a {
     text-decoration: none;
-    padding: 10px;
-  }
-  nav {
-    background-color: #dddddd;
     color: white;
-    padding: 10px;
-  }
+    padding: 15px 18px;
+    display: block;
+    text-align: center;
+}
+
+.navbar a:hover {
+    background-color: rgb(94, 94, 94);
+}
+
+.navbar a.active {
+    background-color: #186bff;
+}
+
+.navbar li {
+    float: left;
+}
 
 div.scroll_box {
     border: 1px solid black;
     padding: 10px;
     height: 300px; 
     overflow: auto; 
-    background-color: white;
+    background-color: black;
     width: 90%;
+}
+
+div.scroll_box_white {
+  border: 1px solid black;
+  padding: 10px;
+  height: 300px; 
+  overflow: auto; 
+  background-color: white;
+  width: 90%;
+}
+
+.log {
+  color: white;
 }
 
 body {
   font-family: Arial, sans-serif;
-  margin: 20px;
+  margin: 0px;
+}
+main {
+    margin: 20px;
 }
 
 h1, h2 {
@@ -173,6 +198,19 @@ button.clear:hover {
   background-color: #c82333;
 }
 
+#yt-btn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#yt-btn:hover {
+  background-color: #c82333;
+}
 
 /* Spinner found at: https://codepen.io/MattIn4D/pen/DOOGBo */
 /* Absolute Center Spinner */

@@ -135,21 +135,21 @@
     {
         "Id": 20,
         "Title": "Revit software User Interface",
-        "Description": "",
+        "Description": "This video demonstrates the following:\r\n\r\nOpen a model.\r\nOpen and tile views of the model.\r\nModify element properties.\r\nUse tools on the ribbon and the Quick Access toolbar.\r\nChange the view display using tools on the View Control Bar.",
         "Video_URL": "https://help.autodesk.com/videos/97dfde60-54e0-11ea-86bb-6702fb65b9b8/video.webm",
         "Page_URL": "https://help.autodesk.com/view/RVT/2024/ENU/?guid=GUID-3197A4ED-323F-4D32-91C0-BA79E794B806"
     },
     {
         "Id": 21,
         "Title": "Create a Custom System Type for Ducts or Pipes",
-        "Description": "",
+        "Description": "This video demonstrates the following:\r\n\r\nUnderstand the two system types: standard and custom.\r\nDuplicate an existing standard system type to create a custom system type.\r\nRename the custom system type.\r\nCustomize the type properties for a default system type.",
         "Video_URL": "https://help.autodesk.com/videos/43d3Rpazo8ABrNZz4FifW6nysiaA7A2W/video.webm",
         "Page_URL": "https://help.autodesk.com/view/RVT/2024/ENU/?guid=GUID-FBDE2FF4-3AE7-412D-B937-131F1CC60AEE"
     },
     {
         "Id": 22,
         "Title": "Visibility Graphics VG Settings",
-        "Description": "",
+        "Description": "This video demonstrates the following:\r\nOpen the Visibility/Graphics Overrides dialog.\r\nHide and unhide objects or categories in a view.\r\nApply a graphic override to an element.",
         "Video_URL": "https://help.autodesk.com/videos/0zMWQyMTE6oPQKP5CSCnlxmfWAlll_pP/video.webm",
         "Page_URL": "https://help.autodesk.com/view/RVT/2024/ENU/?guid=GUID-FB8D0ABE-8521-4EA0-A47E-FF3DEBC403A5"
     },
@@ -162,7 +162,7 @@
     },
     {
         "Title": "Printing",
-        "Description": "Set up a printer and modify the settings to print your views and sheets. This video demonstrates the following: Select a printer. Specify the view and sheets to print. Set the printing options.",
+        "Description": "This video demonstrates the following: Select a printer. Specify the view and sheets to print. Set the printing options.",
         "Video_URL": "https://help.autodesk.com/videos/ZwcGh1MzE6SNhqNEiaZ9CrU1IGv-1vUy/video.webm",
         "Page_URL": "https://help.autodesk.com/view/RVT/2023/ENU/?guid=GUID-4EDFE3F4-D965-4B01-8CE7-B75A5CCBDE73",
         "Id": 24
