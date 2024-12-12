@@ -94,7 +94,7 @@ def upsert_collection(new_collection):
     return new_collection
 
 def initialise_db():
-    chroma_client = chromadb.PersistentClient(path="chroma")
+    chroma_client = chromadb.Client() # PersistentClient for dev Client for azure bcos cannot use sqlite3
     try:
         collection = chroma_client.get_collection("Video_Titles_Embeddings")
     except chromadb.errors.InvalidCollectionException:
