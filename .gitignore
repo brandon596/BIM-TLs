@@ -6,3 +6,6 @@ __pycache__/
 sent/
 generate_hash.py
 users.json
+package-lock.json
+package.json
+node_modules/
