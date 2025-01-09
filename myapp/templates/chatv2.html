@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <title>Web Chat</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <script crossorigin="anonymous" src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+        <style>
+            body {
+                margin: 0;
+                padding: 20px;
+                padding-top: 0;
+                padding-bottom: 10px;
+                background-color: rgb(178, 203, 224);
+            }
+
+            #webchat {
+                display: flex;
+                flex-direction: column;
+                height: 199px;
+                min-height: 80dvh;
+                position: relative;
+                box-shadow: rgba(0, 0, 0, 0.25) 0px 4px 4px;
+                border-radius: 2px;
+                overflow-wrap: break-word;
+            }
+            #heading {
+                font-family: Arial, sans-serif;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="heading">
+            <h2 id="chatbot-name">Chatbot for Building Information Modelling</h2>
+            <p>Send 'hello' or 'hi' to get some suggested prompts to ask the chatbot.</p>
+        </div>
+        <div id="webchat" role="main"></div>
+        <script>
+            (async function() {
+                const styleOptions = {
+                    botAvatarInitials: 'B',
+                    userAvatarInitials: 'U',
+                    userAvatarBackgroundColor: 'rgba(16, 136, 94, 0.8)',
+                    hideUploadButton: true
+                };
+                window.WebChat.renderWebChat(
+                {
+                    directLine: window.WebChat.createDirectLine({ token: '{{ DIRECTLINE_TOKEN }}' }),
+                    styleOptions
+                },
+                document.getElementById('webchat')
+                );
+
+                document.querySelector('#webchat > *').focus();
+            })().catch(err => console.error(err));
+        </script>
+    </body>
+</html>

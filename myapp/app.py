@@ -6,22 +6,23 @@ import chromadb
 import numpy as np
 from yt_playlist_retriever import get_processed_playlist
 import os
-from logger import logger, parse_log_folder_files, parse_all_logs
+from logger import logger, parse_log_folder_files, parse_app_log
 from collections import Counter
 import time
+import requests
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY")
 
-with open("users.json", "r") as file:
+with open("persistent/json_data/users.json", "r") as file:
     users = json.load(file)
 auth = HTTPBasicAuth()
 
-AUTODESK_VID_PATH: str = "json_data/Autodesk_Videos.json"
+AUTODESK_VID_PATH: str = "persistent/json_data/Autodesk_Videos.json"
 YT_API_KEY: str = os.environ.get("YOUTUBE_DATA_API_KEY")
 PLAYLIST_ID: str = os.environ.get("PLAYLIST_ID")
-temperature:float=0.0715
-threshold:float=0.389
+temperature: float=0.0715
+threshold: float=0.389
 
 
 @auth.verify_password
@@ -62,9 +63,10 @@ def load_empty_collection(empty_collection):
     return empty_collection #its not empty here if everything above goes well
 
 def upsert_collection(new_collection):
-    old_ids = set(new_collection.get(
+    old_ids = new_collection.get(
         include=["documents"]
-    ).get("ids"))
+    ).get("ids")
+    old_ids = set(old_ids)
 
     with open(AUTODESK_VID_PATH, "r") as file:
         video_links = json.load(file)
@@ -76,7 +78,7 @@ def upsert_collection(new_collection):
     for row in video_links:
         titles.append(row["Title"].strip())
         metadatas.append({"URL": row["Video_URL"], "Source": row["Page_URL"], "actual_id": row["Id"], "isTitle": True, "onYoutube": True if row["Id"] >= yt_id_start else False})
-        if row["Description"] != "":
+        if row["Description"].strip():
             alt_titles = row["Description"].split(" | ")
             for title in alt_titles:
                 titles.append(title.strip())
@@ -94,7 +96,8 @@ def upsert_collection(new_collection):
     return new_collection
 
 def initialise_db():
-    chroma_client = chromadb.PersistentClient(path="chroma")
+    chroma_client = chromadb.PersistentClient(path="persistent/chroma")
+    # chroma_client = chromadb.Client()
     try:
         collection = chroma_client.get_collection("Video_Titles_Embeddings")
     except chromadb.errors.InvalidCollectionException:
@@ -116,7 +119,7 @@ def get_unique_actual_ids(results):
         actual_id = results["metadatas"][0][i]["actual_id"]
         if score > threshold:
             unique_actual_ids.add(actual_id)
-    return unique_actual_ids
+    return list(unique_actual_ids)
 
 def get_outputs(unique_actual_ids):
     if len(unique_actual_ids) >= 2:
@@ -132,7 +135,7 @@ def get_outputs(unique_actual_ids):
     else:
         results = collection.get(
             where={"$and": [
-                        {"actual_id": unique_actual_ids.pop()},
+                        {"actual_id": unique_actual_ids[0]},
                         {"isTitle": True}
                     ]
                 },
@@ -148,9 +151,8 @@ def get_outputs(unique_actual_ids):
 def query_db(queery):
     results = collection.query(
         query_texts=queery,
-        n_results=10
+        n_results=min(collection.count(), 50)
     )
-    print(collection.count())
     rowed_output = None
     results.get("distances")[0] = invert_and_softmax(results.get("distances")[0])
     unique_actual_ids = get_unique_actual_ids(results)
@@ -218,7 +220,7 @@ def simple_search(query):
 
 # Load JSON data
 def load_data(current_user):
-    user_autodest_vid_file_path = f"json_data/{current_user}_Autodesk_Videos_temp.json"
+    user_autodest_vid_file_path = f"persistent/json_data/{current_user}_Autodesk_Videos_temp.json"
     if os.path.exists(user_autodest_vid_file_path):
         with open(user_autodest_vid_file_path, 'r') as file:
             return json.load(file)
@@ -228,16 +230,16 @@ def load_data(current_user):
 
 # Save JSON data to a temporary file
 def save_data(data, current_user):
-    with open(f'json_data/{current_user}_Autodesk_Videos_temp.json', 'w') as file:
+    with open(f'persistent/json_data/{current_user}_Autodesk_Videos_temp.json', 'w') as file:
         json.dump(data, file, indent=4)
 
 def replace_data_with_temp(current_user):
     with open(AUTODESK_VID_PATH, 'w') as file:
-        with open(f'json_data/{current_user}_Autodesk_Videos_temp.json', 'r') as temp_file:
+        with open(f'persistent/json_data/{current_user}_Autodesk_Videos_temp.json', 'r') as temp_file:
             new_data = json.load(temp_file)
             reindexed_date = reindex_data(new_data)
         json.dump(reindexed_date, file, indent=4)
-    os.remove(f'json_data/{current_user}_Autodesk_Videos_temp.json')
+    os.remove(f'persistent/json_data/{current_user}_Autodesk_Videos_temp.json')
 
 def reindex_data(data):
     for i, video in enumerate(data):
@@ -281,7 +283,7 @@ def download_json_logs():
 @auth.login_required
 def get_query_logs():
     log_list = parse_log_folder_files()
-    all_logs = parse_all_logs()
+    all_logs = parse_app_log()
     titles_list = []
     for log in log_list:
         replaced_blanks = [title or "No videos found" for title in log["Titles"]]
@@ -308,8 +310,8 @@ def all_videos():
 @app.route('/manage_videos')
 @auth.login_required
 def manage_videos():
-    if os.path.exists(f'json_data/{auth.current_user()}_Autodesk_Videos_temp.json'):
-        os.remove(f'json_data/{auth.current_user()}_Autodesk_Videos_temp.json')
+    if os.path.exists(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json'):
+        os.remove(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json')
     data = load_data(auth.current_user())
     return render_template('manage_videos.html', videos=data)
 
@@ -345,16 +347,41 @@ def delete_video(video_id):
 @app.route('/commit', methods=['POST'])
 @auth.login_required
 def commit_changes():
-    global collection
-    # Here you can add logic to commit changes, e.g., save to a backup file or log changes
-    if os.path.exists(f'json_data/{auth.current_user()}_Autodesk_Videos_temp.json') and tempDataIsDifferent(auth.current_user()):
+    if os.path.exists(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json') and tempDataIsDifferent(auth.current_user()):
         replace_data_with_temp(auth.current_user())
-    collection = upsert_collection(collection)
+    upsert_collection(collection)
     time.sleep(1)
     logger.info("Collection updated")
     logger.info(f"Changes committed by {auth.current_user()}")
     return jsonify({'message': 'Changes committed'})
 
+@app.route('/test_querying/<int:x>')
+@auth.login_required
+def test_querying(x):
+    count=collection.count()
+    print(count)
+    results = None
+    results = collection.get()
+    queryed_results = None
+    queryed_results = collection.query(
+        query_texts=["Schedule Sheets"],
+        n_results=x
+    )
+    return jsonify({"count": count, "results": results, "queryed_results": queryed_results})
+
+@app.route('/chat')
+@auth.login_required
+def chatv2():
+    headers = {
+        "Authorization": f"Bearer {os.environ.get('DIRECT_LINE_SECRET')}"
+    }
+    directline_response = requests.post(
+        url="https://directline.botframework.com/v3/directline/tokens/generate",
+        headers=headers
+    ).json()
+    return render_template('chatv2.html', 
+                           DIRECTLINE_TOKEN=directline_response.get("token"),
+                        )
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True, host="0.0.0.0")
