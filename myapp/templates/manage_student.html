@@ -36,6 +36,16 @@
         </div>
     </div>
 </div>
+<div class="toggle-container">
+    <h1>Toggle Chat Endpoint Access</h1>
+    <label class="switch">
+        <button class="btn" id="btnChatToggle"> Toggle Chat Endpoint </button>
+    </label>
+    <div class="status" id="status">
+        Endpoint is currently <span id="status-text">{{ 'enabled' if ENDPOINT_ENABLED else 'disabled' }}</span><br>
+        Users will need to refresh their page.
+    </div>
+</div>
 <script>
     const generatePasswordImg = '<img width="24" height="24" src="https://img.icons8.com/material-rounded/24/restart--v1.png" alt="restart--v1" class="generatePassword" title="generate a password"/>'
     const showPasswordImg = "<img width='24' height='24' src='https://img.icons8.com/fluency-systems-regular/48/visible--v1.png' alt='visible--v1' class='toggleShowPassword' title='toggle hide password'/>"
@@ -220,7 +230,25 @@
             let generatedPassword = window.crypto.getRandomValues(new BigUint64Array(1))[0].toString(36);
             $(this).closest('tr').find('.tdPassword').find('.txtPassword').val(generatedPassword);
         });
-
+        $('#btnChatToggle').on('click', function () {
+            $.ajax({
+                url: '/api/toggle-endpoint', // URL to send the request
+                method: 'GET',      // HTTP method
+                success: function(response) {
+                    let chatEndpoint = "unknown"
+                    if (response.chatEnabled) {
+                        chatEndpoint = "enabled";
+                    } else {
+                        chatEndpoint = "disabled";
+                    }
+                    $('#status-text').html(chatEndpoint);
+                },
+                error: function(xhr, status, error) {
+                    const errorMessage = xhr.responseJSON?.error || "An unknown error occurred.";
+                    alert("Error: " + errorMessage);
+                }
+            });
+        });
         
     });
 </script> 

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_file
+from flask import Flask, request, jsonify, render_template, send_file, abort
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import check_password_hash, generate_password_hash
 import json
@@ -34,12 +34,10 @@ def dumpRoles(roles:dict):
     with open("persistent/json_data/roles.json", "w") as file:
         json.dump(roles, file, indent=4)
 
-# users = getUsers()
-# roles = getRoles()
-
 AUTODESK_VID_PATH: str = "persistent/json_data/Autodesk_Videos.json"
 YT_API_KEY: str = os.environ.get("YOUTUBE_DATA_API_KEY")
 PLAYLIST_ID: str = os.environ.get("PLAYLIST_ID")
+enable_chat_endpoint = False
 temperature: float=0.0715
 threshold: float=0.389
 
@@ -441,7 +439,7 @@ def chatv2():
 @app.route('/student_access')
 @auth.login_required(role="admin")
 def manage_student_access():
-    return render_template("manage_student.html")
+    return render_template("manage_student.html", ENDPOINT_ENABLED=enable_chat_endpoint)
 
 @app.route('/test_requests', methods=["GET", "POST", "DELETE"])
 @auth.login_required(role="admin")
@@ -486,6 +484,20 @@ def usernameExists():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+@app.before_request
+def block_disabled_endpoints():
+    # Check if the request is for the specific endpoint
+    if request.path == '/chat':
+        # Check if the endpoint is disabled
+        if not enable_chat_endpoint:
+            abort(503, description="This endpoint is currently disabled.")
+
+@app.route('/api/toggle-endpoint', methods=['GET'])
+@auth.login_required(role="admin")
+def toggle_endpoint():
+    global enable_chat_endpoint
+    enable_chat_endpoint = not enable_chat_endpoint
+    return jsonify({"chatEnabled": enable_chat_endpoint})
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
