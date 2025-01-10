@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_httpauth import HTTPBasicAuth
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 import json
 import chromadb
 import numpy as np
@@ -10,13 +10,32 @@ from logger import logger, parse_log_folder_files, parse_app_log
 from collections import Counter
 import time
 import requests
+# from secrets import token_urlsafe
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY")
-
-with open("persistent/json_data/users.json", "r") as file:
-    users = json.load(file)
 auth = HTTPBasicAuth()
+
+def getUsers():
+    with open("persistent/json_data/users.json", "r") as file:
+        users = json.load(file)
+    return users
+
+def getRoles():
+    with open("persistent/json_data/roles.json", "r") as file:
+        roles = json.load(file)
+    return roles
+
+def dumpUsers(users:dict):
+    with open("persistent/json_data/users.json", "w") as file:
+        json.dump(users, file, indent=4)
+
+def dumpRoles(roles:dict):
+    with open("persistent/json_data/roles.json", "w") as file:
+        json.dump(roles, file, indent=4)
+
+# users = getUsers()
+# roles = getRoles()
 
 AUTODESK_VID_PATH: str = "persistent/json_data/Autodesk_Videos.json"
 YT_API_KEY: str = os.environ.get("YOUTUBE_DATA_API_KEY")
@@ -24,12 +43,46 @@ PLAYLIST_ID: str = os.environ.get("PLAYLIST_ID")
 temperature: float=0.0715
 threshold: float=0.389
 
+@auth.get_user_roles
+def get_user_roles(username):
+    return getRoles().get(username)
 
 @auth.verify_password
 def verify_password(username, password):
-    if username in users and \
-            check_password_hash(users.get(username), password):
+    if username in getUsers() and getUsers().get(username) == password:
         return username
+    elif username in getUsers() and check_password_hash(getUsers().get(username), password):
+        return username
+
+def getStudents():
+    roles = getRoles()
+    users = getUsers()
+    studentUsernames = [user for user, role in roles.items() if "student" in role]
+    studentAccounts = {username: password for username, password in users.items() if username in studentUsernames}
+    return studentAccounts
+
+def getNumberofStudents(roles:dict):
+    c = Counter(roles.values())
+    return c["student"]
+
+def additStudentUser(account: dict):
+    users = getUsers()
+    users.update(account)
+    roles = getRoles()
+    roles.update({next(iter(account)): "student"})
+    if getNumberofStudents(roles) <= 10:
+        dumpUsers(users)
+        dumpRoles(roles)
+    else:
+        raise Exception("too many access accounts limit is 10")
+
+def deleteStudentUser(username:str):
+    users = getUsers()
+    users.pop(username)
+    roles = getRoles()
+    roles.pop(username)
+    dumpUsers(users)
+    dumpRoles(roles)
 
 def create_collection(chroma_client):
     created_collection = chroma_client.create_collection(
@@ -267,12 +320,13 @@ def semantic_searh():
         return jsonify({"error": str(e)}), 400
 
 @app.route("/")
+@auth.login_required(role="admin")
 def home():
     
     return render_template("home.html")
 
 @app.route("/downloads/json_logs")
-@auth.login_required
+@auth.login_required(role="admin")
 def download_json_logs():
     log_list = parse_log_folder_files()
     with open("sent/query_logs.json", "w") as file:
@@ -280,7 +334,7 @@ def download_json_logs():
     return send_file("sent/query_logs.json", as_attachment=True, download_name="query_logs.json")
 
 @app.route("/logs", methods=["GET"])
-@auth.login_required
+@auth.login_required(role="admin")
 def get_query_logs():
     log_list = parse_log_folder_files()
     all_logs = parse_app_log()
@@ -293,6 +347,7 @@ def get_query_logs():
 
 
 @app.route("/video_table", methods=["GET","POST"])
+@auth.login_required(role="admin")
 def all_videos():
     query = request.form.get("search")
     toEmbed = request.form.get("embed")
@@ -308,7 +363,7 @@ def all_videos():
         return render_template("table.html")
 
 @app.route('/manage_videos')
-@auth.login_required
+@auth.login_required(role="admin")
 def manage_videos():
     if os.path.exists(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json'):
         os.remove(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json')
@@ -316,7 +371,7 @@ def manage_videos():
     return render_template('manage_videos.html', videos=data)
 
 @app.route('/add', methods=['POST'])
-@auth.login_required
+@auth.login_required(role="admin")
 def add_video():
     data = load_data(auth.current_user())
     new_video = request.json
@@ -326,7 +381,7 @@ def add_video():
     return jsonify(new_video), 201
 
 @app.route('/edit/<int:video_id>', methods=['POST'])
-@auth.login_required
+@auth.login_required(role="admin")
 def edit_video(video_id):
     data = load_data(auth.current_user())
     video = next((video for video in data if video['Id'] == video_id), None)
@@ -337,7 +392,7 @@ def edit_video(video_id):
     return jsonify(video)
 
 @app.route('/delete/<int:video_id>', methods=['POST'])
-@auth.login_required
+@auth.login_required(role="admin")
 def delete_video(video_id):
     data = load_data(auth.current_user())
     data = [video for video in data if video['Id'] != video_id]
@@ -345,7 +400,7 @@ def delete_video(video_id):
     return jsonify({'message': 'Video deleted'})
 
 @app.route('/commit', methods=['POST'])
-@auth.login_required
+@auth.login_required(role="admin")
 def commit_changes():
     if os.path.exists(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json') and tempDataIsDifferent(auth.current_user()):
         replace_data_with_temp(auth.current_user())
@@ -356,7 +411,7 @@ def commit_changes():
     return jsonify({'message': 'Changes committed'})
 
 @app.route('/test_querying/<int:x>')
-@auth.login_required
+@auth.login_required(role="admin")
 def test_querying(x):
     count=collection.count()
     print(count)
@@ -370,7 +425,7 @@ def test_querying(x):
     return jsonify({"count": count, "results": results, "queryed_results": queryed_results})
 
 @app.route('/chat')
-@auth.login_required
+@auth.login_required(role=["admin", "student"])
 def chatv2():
     headers = {
         "Authorization": f"Bearer {os.environ.get('DIRECT_LINE_SECRET')}"
@@ -380,8 +435,57 @@ def chatv2():
         headers=headers
     ).json()
     return render_template('chatv2.html', 
-                           DIRECTLINE_TOKEN=directline_response.get("token"),
+                           DIRECTLINE_TOKEN=directline_response.get("token")
                         )
+
+@app.route('/student_access')
+@auth.login_required(role="admin")
+def manage_student_access():
+    return render_template("manage_student.html")
+
+@app.route('/test_requests', methods=["GET", "POST", "DELETE"])
+@auth.login_required(role="admin")
+def test_requests():
+    print(type(request.json))
+    return jsonify(request.json)
+
+@app.route('/student_access/addit', methods=["POST"])
+@auth.login_required(role='admin')
+def addit_student_access():
+    account = request.json
+    try:
+        additStudentUser(account)
+        return jsonify({"response": "OK"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    
+
+@app.route('/student_access/delete', methods=["DELETE"])
+@auth.login_required(role='admin')
+def delete_student_access():
+    try:
+        deleteStudentUser(request.json["username"])
+        return jsonify({"response": "OK"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/student_access/get', methods=["GET"])
+@auth.login_required(role='admin')
+def get_student_access():
+    return jsonify(getStudents())
+
+@app.route('/student_access/user/exists', methods=["POST"])
+@auth.login_required(role="admin")
+def usernameExists():
+    username = request.json["username"]
+    try:
+        if username in getUsers():
+            return jsonify({"userExists": True})
+        else:
+            return jsonify({"userExists": False})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

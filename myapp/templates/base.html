@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
 </head>
 <body>
     <nav class="navbar">
@@ -13,7 +14,7 @@
             <li><a href="/video_table" class="{% block active_table %}{% endblock %}">Search Videos</a></li>
             <li><a href="/logs" class="{% block active_logs %}{% endblock %}">Logs</a></li>
             <li><a href="/manage_videos" class="{% block active_manage %}{% endblock %}">Manage Videos</a></li>
-            
+            <li><a href="/student_access" class="{% block active_access %}{% endblock %}">Manage Access</a></li>
         </ul>
     </nav>
     <main>
