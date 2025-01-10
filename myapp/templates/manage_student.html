@@ -42,7 +42,7 @@
         <button class="btn" id="btnChatToggle"> Toggle Chat Endpoint </button>
     </label>
     <div class="status" id="status">
-        Endpoint is currently <span id="status-text">{{ 'enabled' if ENDPOINT_ENABLED else 'disabled' }}</span><br>
+        Chat Endpoint is currently <span id="status-text" class="{{ 'green' if ENDPOINT_ENABLED else 'red' }}" >{{ 'enabled' if ENDPOINT_ENABLED else 'disabled' }}</span><br>
         Users will need to refresh their page.
     </div>
 </div>
@@ -235,13 +235,19 @@
                 url: '/api/toggle-endpoint', // URL to send the request
                 method: 'GET',      // HTTP method
                 success: function(response) {
-                    let chatEndpoint = "unknown"
+                    let chatEndpoint = "unknown";
+                    let colorText = "black"
                     if (response.chatEnabled) {
                         chatEndpoint = "enabled";
+                        colorText = "green";
+                        $('#status-text').removeClass('red');
                     } else {
                         chatEndpoint = "disabled";
+                        colorText = "red";
+                        $('#status-text').removeClass('green');
                     }
                     $('#status-text').html(chatEndpoint);
+                    $('#status-text').addClass(colorText);
                 },
                 error: function(xhr, status, error) {
                     const errorMessage = xhr.responseJSON?.error || "An unknown error occurred.";
