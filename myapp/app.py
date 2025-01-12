@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_file, abort
+from flask import Flask, request, jsonify, render_template, send_file, abort, redirect
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import check_password_hash, generate_password_hash
 import json
@@ -8,9 +8,7 @@ from yt_playlist_retriever import get_processed_playlist
 import os
 from logger import logger, parse_log_folder_files, parse_app_log
 from collections import Counter
-import time
 import requests
-# from secrets import token_urlsafe
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY")
@@ -37,9 +35,28 @@ def dumpRoles(roles:dict):
 AUTODESK_VID_PATH: str = "persistent/json_data/Autodesk_Videos.json"
 YT_API_KEY: str = os.environ.get("YOUTUBE_DATA_API_KEY")
 PLAYLIST_ID: str = os.environ.get("PLAYLIST_ID")
-enable_chat_endpoint = False
 temperature: float=0.0715
 threshold: float=0.389
+
+# functions for json file for app states
+
+
+def get_all_app_states() -> dict:
+    with open("persistent/json_data/app_state.json", "r") as state_file:
+        states = json.load(state_file)
+    return states
+
+def dump_all_app_states(states:dict):
+    with open("persistent/json_data/app_state.json", "w") as state_file:
+        json.dump(states, state_file, indent=4)
+
+def change_app_state(stateName:str, newValue):
+    states = get_all_app_states()
+    if stateName in states:
+        states.update({stateName: newValue})
+        dump_all_app_states(states)
+    else:
+        raise Exception(f"{stateName} does not exist")
 
 @auth.get_user_roles
 def get_user_roles(username):
@@ -52,10 +69,10 @@ def verify_password(username, password):
     elif username in getUsers() and check_password_hash(getUsers().get(username), password):
         return username
 
-def getStudents():
+def getUserFromRole(filter_role:str):
     roles = getRoles()
     users = getUsers()
-    studentUsernames = [user for user, role in roles.items() if "student" in role]
+    studentUsernames = [user for user, role in roles.items() if filter_role in role]
     studentAccounts = {username: password for username, password in users.items() if username in studentUsernames}
     return studentAccounts
 
@@ -74,7 +91,24 @@ def additStudentUser(account: dict):
     else:
         raise Exception("too many access accounts limit is 10")
 
-def deleteStudentUser(username:str):
+def addAccounts(accounts: dict, role:str):
+    users = getUsers()
+    users.update(accounts)
+    roles = getRoles()
+    insertRoles = {username: role for username in accounts}
+    roles.update(insertRoles)
+    dumpUsers(users)
+    dumpRoles(roles)
+
+def updatePassword(username, new_password):
+    users = getUsers()
+    users.update({username: new_password})
+    dumpUsers(users)
+
+def OldPasswordisCorrect(username, old_password):
+    return check_password_hash(getUsers()[username], old_password)
+
+def deleteUser(username:str):
     users = getUsers()
     users.pop(username)
     roles = getRoles()
@@ -301,6 +335,8 @@ def tempDataIsDifferent(current_user):
     with open(AUTODESK_VID_PATH, 'r') as file:
         return load_data(current_user) != json.load(file)
 
+
+
 #Routes
 @app.route('/api/semantic_search', methods=["POST"])
 def semantic_searh():
@@ -318,11 +354,18 @@ def semantic_searh():
         return jsonify({"error": str(e)}), 400
 
 @app.route("/")
-@auth.login_required(role="admin")
+@auth.login_required()
 def home():
+    current_role = get_user_roles(auth.current_user())
+    if current_role == "admin":
+        return render_template("home.html")
+    elif current_role == "student":
+        return redirect("/chat")
+    elif current_role == "first_user_login":
+        return render_template("first_login.html")
+    else:
+        return "Unauthorized Access", 401
     
-    return render_template("home.html")
-
 @app.route("/downloads/json_logs")
 @auth.login_required(role="admin")
 def download_json_logs():
@@ -335,13 +378,13 @@ def download_json_logs():
 @auth.login_required(role="admin")
 def get_query_logs():
     log_list = parse_log_folder_files()
-    all_logs = parse_app_log()
+    current_logs = parse_app_log()
     titles_list = []
     for log in log_list:
         replaced_blanks = [title or "No videos found" for title in log["Titles"]]
         titles_list += replaced_blanks
     title_counter = Counter(titles_list)
-    return render_template("get_logs.html", logs=json.dumps(log_list, indent=4), title_counter=title_counter, all_logs=all_logs)
+    return render_template("get_logs.html", logs=json.dumps(log_list, indent=4), title_counter=title_counter, current_logs=current_logs)
 
 
 @app.route("/video_table", methods=["GET","POST"])
@@ -403,24 +446,22 @@ def commit_changes():
     if os.path.exists(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json') and tempDataIsDifferent(auth.current_user()):
         replace_data_with_temp(auth.current_user())
     upsert_collection(collection)
-    time.sleep(1)
-    logger.info("Collection updated")
-    logger.info(f"Changes committed by {auth.current_user()}")
+    logger.info(f"Collection updated by {auth.current_user()}")
     return jsonify({'message': 'Changes committed'})
 
-@app.route('/test_querying/<int:x>')
-@auth.login_required(role="admin")
-def test_querying(x):
-    count=collection.count()
-    print(count)
-    results = None
-    results = collection.get()
-    queryed_results = None
-    queryed_results = collection.query(
-        query_texts=["Schedule Sheets"],
-        n_results=x
-    )
-    return jsonify({"count": count, "results": results, "queryed_results": queryed_results})
+# @app.route('/test_querying/<int:x>')
+# @auth.login_required(role="admin")
+# def test_querying(x):
+#     count=collection.count()
+#     print(count)
+#     results = None
+#     results = collection.get()
+#     queryed_results = None
+#     queryed_results = collection.query(
+#         query_texts=["Schedule Sheets"],
+#         n_results=x
+#     )
+#     return jsonify({"count": count, "results": results, "queryed_results": queryed_results})
 
 @app.route('/chat')
 @auth.login_required(role=["admin", "student"])
@@ -431,30 +472,35 @@ def chatv2():
     directline_response = requests.post(
         url="https://directline.botframework.com/v3/directline/tokens/generate",
         headers=headers
-    ).json()
+    )
+    if directline_response.status_code != 200:
+        logger.error("Directline API", extra=directline_response.json())  
     return render_template('chatv2.html', 
-                           DIRECTLINE_TOKEN=directline_response.get("token")
-                        )
+                            DIRECTLINE_TOKEN=directline_response.json().get("token")
+                            )
 
 @app.route('/student_access')
 @auth.login_required(role="admin")
 def manage_student_access():
-    return render_template("manage_student.html", ENDPOINT_ENABLED=enable_chat_endpoint)
+    return render_template("manage_student.html", ENDPOINT_ENABLED=get_all_app_states().get("enable_chat_endpoint"))
 
-@app.route('/test_requests', methods=["GET", "POST", "DELETE"])
-@auth.login_required(role="admin")
-def test_requests():
-    print(type(request.json))
-    return jsonify(request.json)
+# @app.route('/test_requests', methods=["GET", "POST", "DELETE"])
+# @auth.login_required()
+# def test_requests():
+#     print(request.json)
+#     print(type(request.json))
+#     return jsonify(request.json)
 
 @app.route('/student_access/addit', methods=["POST"])
 @auth.login_required(role='admin')
 def addit_student_access():
-    account = request.json
     try:
+        account = request.json
         additStudentUser(account)
+        logger.info(f"Created or updated student group {next(iter(account))}")
         return jsonify({"response": "OK"})
     except Exception as e:
+        logger.error("while additing student access", extra={"error": str(e)})
         return jsonify({"error": str(e)}), 400
     
 
@@ -462,26 +508,30 @@ def addit_student_access():
 @auth.login_required(role='admin')
 def delete_student_access():
     try:
-        deleteStudentUser(request.json["username"])
+        username = request.json["username"]
+        deleteUser(username)
+        logger.info("Deleted account", extra={"Student User Group":username})
         return jsonify({"response": "OK"})
     except Exception as e:
+        logger.error("while deleting student access", extra={"error": str(e)})
         return jsonify({"error": str(e)}), 400
 
 @app.route('/student_access/get', methods=["GET"])
 @auth.login_required(role='admin')
 def get_student_access():
-    return jsonify(getStudents())
+    return jsonify(getUserFromRole("student"))
 
 @app.route('/student_access/user/exists', methods=["POST"])
 @auth.login_required(role="admin")
 def usernameExists():
-    username = request.json["username"]
     try:
+        username = request.json["username"]
         if username in getUsers():
             return jsonify({"userExists": True})
         else:
             return jsonify({"userExists": False})
     except Exception as e:
+        logger.error(str(e))
         return jsonify({"error": str(e)}), 400
 
 @app.before_request
@@ -489,15 +539,63 @@ def block_disabled_endpoints():
     # Check if the request is for the specific endpoint
     if request.path == '/chat':
         # Check if the endpoint is disabled
-        if not enable_chat_endpoint:
+        if not get_all_app_states().get("enable_chat_endpoint"):
             abort(503, description="This endpoint is currently disabled.")
 
 @app.route('/api/toggle-endpoint', methods=['GET'])
 @auth.login_required(role="admin")
 def toggle_endpoint():
-    global enable_chat_endpoint
+    enable_chat_endpoint = get_all_app_states().get("enable_chat_endpoint")
     enable_chat_endpoint = not enable_chat_endpoint
+    change_app_state("enable_chat_endpoint", enable_chat_endpoint)
+    logger.info("Toggled chat endpoint", extra={"chatEnabled": enable_chat_endpoint})
     return jsonify({"chatEnabled": enable_chat_endpoint})
+
+@app.route('/admin/account/add', methods=["POST"])
+@auth.login_required(role="first_user_login")
+def add_admin_accounts():
+    try:
+        admin_accounts = request.json
+        if admin_accounts:
+            admin_accounts = {username: generate_password_hash(hashed_pw) for username, hashed_pw in admin_accounts.items() }
+            addAccounts(admin_accounts, "admin")
+            logger.info("Admin accounts added")
+            deleteUser(auth.current_user())
+            logger.info(f"{auth.current_user()} deleted")
+            return jsonify({"response": "accounts added"})
+        else:
+            return jsonify({"error": "No accounts added"}), 400
+    except Exception as e:
+        logger.error(str(e))
+        return jsonify({"error": str(e)}), 400
+    
+@app.route('/profile')
+@auth.login_required(role="admin")
+def profile():
+    return render_template("profile.html", username=auth.current_user())
+
+@app.route('/admin/account/update', methods=["POST"])
+@auth.login_required(role="admin")
+def update_admin_account():
+    try:
+        newAccount:dict = request.json
+        if not OldPasswordisCorrect(auth.current_user(), newAccount["oldPassword"]):
+            return jsonify({"error": "Old Password is wrong."}), 400
+        elif newAccount["username"] == auth.current_user():
+            updatePassword(auth.current_user(), generate_password_hash(newAccount["newPassword"]))
+            logger.info(f"Admin user {auth.current_user()} password was changed successfully")
+            return jsonify({"response": "Password Updated, Username Unchanged"})
+        elif not newAccount["username"] in getUsers():
+            deleteUser(auth.current_user())
+            logger.info(f"Changing admin username and password: {auth.current_user()} admin account was deleted")
+            addAccounts({newAccount["username"]: generate_password_hash(newAccount["newPassword"])}, "admin")
+            logger.info(f"Changing admin username and password: {newAccount["username"]} admin account was created")
+            return jsonify({"response": "Password Updated, Username Updated"})
+        else:
+            raise Exception("That username is already taken, choose a different one.")
+    except Exception as e:
+        logger.error(str(e))
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Sign Up</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename='reload.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main>
+    <div class="bulk-signup-container">
+        <h2>Bulk Sign Up</h2>
+        <p><b>README</b>: This admin account creation page can only be accessed <b>ONCE</b>, all the admin accounts can only be created on this page but the passwords and usernames can be changed anytime. </p>
+        <form id="bulk-signup-form" class="sign-form">
+            <div id="user-fields">
+                <!-- Initial user fields -->
+                <div class="user-group group">
+                    <input type="text" placeholder="Username" required>
+                    <input type="password" placeholder="Password" required>
+                    <input type="password" placeholder="Confirm Password" required>
+                </div>
+            </div>
+            <div class="buttons group">
+                <button type="button" class="add-user-button">Add Another User</button>
+                <button type="submit" class="submit-button">Submit All</button>
+                <p>Please fill in the textbox below before clicking submit all. Once you click submit all, this page can no longer be accessed.</p>
+                <input type="text" class="sanity-field" placeholder="Type 'confirm'" required>
+            </div>
+        </form>
+    </div>
+    </main>
+    <script>
+        // Function to add more user fields
+        $(document).ready(function () {
+            // Add more user fields
+            $('.add-user-button').click(function () {
+                const newUserGroup = `
+                    <div class="user-group group">
+                        <input type="text" placeholder="Username" required>
+                        <input type="password" placeholder="Password" required>
+                        <input type="password" placeholder="Confirm Password" required>
+                    </div>
+                `;
+                $('#user-fields').append(newUserGroup);
+            });
+
+            // Handle form submission
+            $('#bulk-signup-form').submit(function (e) {
+                e.preventDefault();
+
+                let passwordsMatch = true;
+                const userData = {};
+
+                // Check if passwords match for all users
+                $('.user-group').each(function () {
+                    const username = $(this).find('input[type="text"]').val();
+                    const password = $(this).find('input[type="password"]').eq(0).val();
+                    const confirmPassword = $(this).find('input[type="password"]').eq(1).val();
+
+                    if (password !== confirmPassword) {
+                        passwordsMatch = false;
+                        $(this).find('input[type="password"]').eq(1).css('border-color', 'red');
+                    } else {
+                        $(this).find('input[type="password"]').eq(1).css('border-color', '#ccc');
+                        userData[username] = password;
+                    }
+                });
+
+                if (!passwordsMatch) {
+                    alert('Please ensure all passwords match.');
+                    return;
+                }
+                $.ajax({
+                    url: '/admin/account/add', // URL to send the request
+                    method: 'POST',      // HTTP method
+                    contentType: 'application/json',
+                    data: JSON.stringify(userData),
+                    success: function(response) {
+                        alert('Form submitted successfully!')
+                        location.reload(true);
+                    },
+                    error: function(xhr, status, error) {
+                        const errorMessage = xhr.responseJSON?.error || "An unknown error occurred.";
+                        alert("Error: " + errorMessage);
+                    }
+                }); 
+
+            });
+        });
+    </script>
+
+</body>
+</html>

@@ -12,8 +12,10 @@
 {% endblock %}
 {% block active_access %}active{% endblock %}
 {% block content %}
-<h1>Accounts</h1>
-<p>Welcome to the FYP Revit Chatbot Tools</p>
+<h1>Student Account Groups</h1>
+<p>Maximum of 10 access account groups. Each account group can have multiple people using at the same time. 
+    Student account groups below can only access the chat.
+</p>
 <div class="container">
     <div class="row"> 
         <div class="col-md-12 text-right">
@@ -43,7 +45,7 @@
     </label>
     <div class="status" id="status">
         Chat Endpoint is currently <span id="status-text" class="{{ 'green' if ENDPOINT_ENABLED else 'red' }}" >{{ 'enabled' if ENDPOINT_ENABLED else 'disabled' }}</span><br>
-        Users will need to refresh their page.
+        Do not spam, changes may take about 10 seconds to be applied. Refresh the page to check.
     </div>
 </div>
 <script>

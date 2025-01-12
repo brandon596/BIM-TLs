@@ -17,13 +17,13 @@ handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+
 def parse_log_folder_files():
     import json
     lines = []
     for file in os.listdir("persistent/logs"):
-        if file.endswith(".log"):
-            with open(f"persistent/logs/{file}", "r") as file:
-                lines += file.readlines()
+        with open(f"persistent/logs/{file}", "r") as file:
+            lines += file.readlines()
 
     return [json.loads(line) for line in lines if "Query received" in line]
 

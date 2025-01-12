@@ -1,4 +1,3 @@
 {
-    "admin": "scrypt:32768:8:1$EiQudSbO4SSZRGM9$c9eb27f40d141933773080b140b0c500d962a5fe68f9a17e55b60dd758e69680733a33b7d5107ee8ae13a316c642486310bef60d171146cbcb639a437b713ee2",
-    "student": "password"
+    "firstlogin": "firstlogin"
 }

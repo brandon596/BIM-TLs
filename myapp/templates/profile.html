@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Manage Videos{% endblock %}
+{% block head %}<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>{% endblock %}
+{% block active_profile %}active{% endblock %}
+{% block content %}
+<h2>Hi, {{ username }}!</h2>
+<p>Edit your profile here.</p>
+<form class="sign-form">
+    <div id="user-fields">
+        <span>Username:</span>
+        <input type="text" placeholder="Username" value="{{ username }}" id="username" required>
+        <span>Old Password:</span>
+        <input type="password" placeholder="Old Password" id="old-password" required>
+        <span>New Password:</span>
+        <input type="password" placeholder="New Password" id="new-password" required>
+        <span>Confirm New Password:</span>
+        <input type="password" placeholder="Confirm New Password" id="confirm-new-password" required>
+    </div>
+    <div id="buttons group">
+        <button type="submit" class="submit-button">Update Profile</button>
+    </div>
+</form>
+{% endblock %}
+{% block after_main %}
+<script>
+    $(document).ready(function () {
+        $(".sign-form").submit( function(e) {
+            e.preventDefault();
+            
+            const username = $(this).find("input[type=text]").val();
+            const oldPassword = $(this).find("input[id=old-password]").val();
+            const newPassword = $(this).find("input[id=new-password]").val();
+            const confirmPassword = $(this).find("input[id=confirm-new-password]").val();
+
+            if (oldPassword === newPassword) {
+                $(this).find("input[id=old-password]").css("border-color", "red");
+                $(this).find("input[id=new-password]").css("border-color", "red");
+                alert("Old and new passwords cannot be the same.");
+                return;
+            } else {
+                $(this).find("input[id=old-password]").css("border-color", "#ccc");
+                $(this).find("input[id=new-password]").css("border-color", "#ccc");
+            }
+            if (newPassword !== confirmPassword) {
+                $(this).find("input[id=confirm-new-password]").css("border-color", "red");
+                alert("New and Confirm New passwords are different.");
+                return;
+            } else {
+                $(this).find("input[id=confirm-new-password]").css("border-color", "#ccc");
+            }
+            $.ajax({
+                url: '/admin/account/update', // URL to send the request 
+                method: 'POST',      // HTTP method
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    username,
+                    oldPassword,
+                    newPassword
+                }),
+                success: function(response) {
+                    alert('Account updated successfully!');
+                    console.log(response);
+                    location.reload(true);
+                },
+                error: function(xhr, status, error) {
+                    const errorMessage = xhr.responseJSON?.error || "An unknown error occurred.";
+                    alert("Error: " + errorMessage);
+                }
+            }); 
+        });
+    });
+</script>
+{% endblock %}

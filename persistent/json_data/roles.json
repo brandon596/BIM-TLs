@@ -1,4 +1,3 @@
 {
-    "admin": "admin",
-    "student": "student"
+    "first_login": "first_user_login"
 }

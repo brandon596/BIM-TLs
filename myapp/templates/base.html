@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='reload.js') }}"></script>
     {% block head %}{% endblock %}
 </head>
 <body>
     <nav class="navbar">
         <ul>
             <li><a href="/" class="{% block active_home %}{% endblock %}">Home</a></li>
+            <li><a href="/profile" class="{% block active_profile %}{% endblock %}">Profile</a></li>
             <li><a href="/video_table" class="{% block active_table %}{% endblock %}">Search Videos</a></li>
             <li><a href="/logs" class="{% block active_logs %}{% endblock %}">Logs</a></li>
             <li><a href="/manage_videos" class="{% block active_manage %}{% endblock %}">Manage Videos</a></li>
@@ -20,5 +22,6 @@
     <main>
     {% block content %}{% endblock %}
     </main>
+    {% block after_main %}{% endblock %}
 </body>
 </html>
