@@ -85,23 +85,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Commit changes
     commitBtn.addEventListener('click', async () => {
-        // show loading screen
-        document.getElementById('loading-screen').style.display = 'block';
-        
-        const response = await fetch('/commit', {
-            method: 'POST'
-        });
-        
-        // hide loading screen
-        document.getElementById('loading-screen').style.display = 'none';
-        if (response.ok) {
-            alert('Changes committed');
-        } else {
-            alert('Failed to commit changes. Check the logs could be wrong/expired API key, wrong playlist Id ¯\\_(ツ)_/¯');
+        try {
+            // Show loading screen
+            document.getElementById('loading-screen').style.display = 'block';
+    
+            // Make the fetch request
+            const response = await fetch('/commit', {
+                method: 'POST'
+            });
+    
+            // Hide loading screen
+            document.getElementById('loading-screen').style.display = 'none';
+    
+            // Check if the response is OK
+            if (response.ok) {
+                alert('Changes committed');
+            } else {
+                // Parse the JSON response to get the error message
+                const errorData = await response.json();
+                alert('Error: '+ errorData.error); // Assuming the error message is in the `error` field
+            }
+        } catch (error) {
+            // Handle any network or other errors
+            alert('Fetch error: '+ error);
+            document.getElementById('loading-screen').style.display = 'none'; // Ensure loading screen is hidden
         }
-        
     });
-
     // Helper function to add video item to the list
     function addVideoItem(video) {
         const videoItem = document.createElement('div');

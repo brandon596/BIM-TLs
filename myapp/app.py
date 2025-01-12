@@ -443,11 +443,14 @@ def delete_video(video_id):
 @app.route('/commit', methods=['POST'])
 @auth.login_required(role="admin")
 def commit_changes():
-    if os.path.exists(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json') and tempDataIsDifferent(auth.current_user()):
-        replace_data_with_temp(auth.current_user())
-    upsert_collection(collection)
-    logger.info(f"Collection updated by {auth.current_user()}")
-    return jsonify({'message': 'Changes committed'})
+    try:
+        if os.path.exists(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json') and tempDataIsDifferent(auth.current_user()):
+            replace_data_with_temp(auth.current_user())
+        upsert_collection(collection)
+        logger.info(f"Collection updated by {auth.current_user()}")
+        return jsonify({'message': 'Changes committed'})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 # @app.route('/test_querying/<int:x>')
 # @auth.login_required(role="admin")
