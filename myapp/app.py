@@ -409,7 +409,7 @@ def manage_videos():
     if os.path.exists(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json'):
         os.remove(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json')
     data = load_data(auth.current_user())
-    return render_template('manage_videos.html', videos=data)
+    return render_template('manage_videos.html', videos=data, PLAYLIST_ID=PLAYLIST_ID)
 
 @app.route('/add', methods=['POST'])
 @auth.login_required(role="admin")
