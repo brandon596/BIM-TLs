@@ -229,7 +229,8 @@
             }
         });
         $('#tblData').on('click', '.generatePassword', function () {
-            let generatedPassword = window.crypto.getRandomValues(new BigUint64Array(1))[0].toString(36);
+            let strings = window.crypto.getRandomValues(new BigUint64Array(2)); 
+            let generatedPassword = strings[0].toString(36) + strings[1].toString(36).toUpperCase();
             $(this).closest('tr').find('.tdPassword').find('.txtPassword').val(generatedPassword);
         });
         $('#btnChatToggle').on('click', function () {

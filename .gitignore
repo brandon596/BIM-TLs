@@ -9,3 +9,5 @@ all-MiniLM-L6-v2/
 Dockerfile
 persistent/chroma/
 persistent/logs/
+compose.yml
+.dockerignore

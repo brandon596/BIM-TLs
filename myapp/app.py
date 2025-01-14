@@ -182,7 +182,6 @@ def upsert_collection(new_collection):
 
 def initialise_db():
     chroma_client = chromadb.PersistentClient(path="persistent/chroma")
-    # chroma_client = chromadb.Client()
     try:
         collection = chroma_client.get_collection("Video_Titles_Embeddings")
     except chromadb.errors.InvalidCollectionException:
