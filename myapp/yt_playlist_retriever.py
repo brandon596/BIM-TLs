@@ -5,6 +5,7 @@ from logger import logger
 
 
 def get_yt_playlist(playlist_id: str, api_key: str):
+    
     URL = 'https://www.googleapis.com/youtube/v3/playlistItems'
     params = {
         'part': ','.join(['snippet']),

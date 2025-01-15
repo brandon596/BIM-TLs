@@ -147,14 +147,19 @@ def load_empty_collection(empty_collection):
     )
     return empty_collection #its not empty here if everything above goes well
 
-def upsert_collection(new_collection):
+def upsert_collection(new_collection, file_path):
     old_ids = new_collection.get(
         include=["documents"]
     ).get("ids")
     old_ids = set(old_ids)
-
-    with open(AUTODESK_VID_PATH, "r") as file:
+    if not os.path.exists(file_path):
+        file_path = AUTODESK_VID_PATH
+    with open(file_path, "r") as file:
         video_links = json.load(file)
+    i = 1
+    for video in video_links:
+        video["Id"] = i
+        i += 1
     yt_id_start = len(video_links)+1
     yt_vids_links = get_processed_playlist(PLAYLIST_ID, YT_API_KEY, yt_id_start)
     video_links += yt_vids_links
@@ -443,12 +448,14 @@ def delete_video(video_id):
 @auth.login_required(role="admin")
 def commit_changes():
     try:
-        if os.path.exists(f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json') and tempDataIsDifferent(auth.current_user()):
+        user_vids_file_path = f'persistent/json_data/{auth.current_user()}_Autodesk_Videos_temp.json'
+        upsert_collection(collection, user_vids_file_path)
+        if tempDataIsDifferent(auth.current_user()) and os.path.exists(user_vids_file_path):
             replace_data_with_temp(auth.current_user())
-        upsert_collection(collection)
         logger.info(f"Collection updated by {auth.current_user()}")
         return jsonify({'message': 'Changes committed'})
     except Exception as e:
+        logger.error(str(e))
         return jsonify({"error": str(e)}), 400
 
 # @app.route('/test_querying/<int:x>')
@@ -591,7 +598,7 @@ def update_admin_account():
             deleteUser(auth.current_user())
             logger.info(f"Changing admin username and password: {auth.current_user()} admin account was deleted")
             addAccounts({newAccount["username"]: generate_password_hash(newAccount["newPassword"])}, "admin")
-            logger.info(f"Changing admin username and password: {newAccount["username"]} admin account was created")
+            logger.info(f"Changing admin username and password: {newAccount['username']} admin account was created")
             return jsonify({"response": "Password Updated, Username Updated"})
         else:
             raise Exception("That username is already taken, choose a different one.")
