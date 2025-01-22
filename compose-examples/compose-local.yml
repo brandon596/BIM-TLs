@@ -1,0 +1,57 @@
+# Try locally
+
+name: bim-chat
+
+services:
+  vectordb:
+    image: docker.io/chromadb/chroma
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: db
+        target: /chroma/chroma
+    networks:
+      - db_network
+    healthcheck:
+      test: ["CMD", "curl", "localhost:8000"]
+      interval: 2s
+      start_period: 5s  # Time to wait for DB startup before starting the app
+      retries: 1
+
+  app:
+    image: docker.io/brandon596/bim-chat
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: app-data
+        target: /app/persistent
+    ports:
+      - 8080:8001
+    networks:
+      - db_network
+      - frontend
+    environment:
+      YOUTUBE_DATA_API_KEY: ${YOUTUBE_DATA_API_KEY} # You can get this from https://console.cloud.google.com/apis/library/youtube.googleapis.com
+      SECRET_KEY: ${SECRET_KEY} # any long string
+      API_KEY: ${API_KEY} # any long string, this is for the semantic search API
+      PLAYLIST_ID: ${PLAYLIST_ID} # YT Playlist ID
+      DIRECT_LINE_SECRET: ${DIRECT_LINE_SECRET}
+      CHROMA_HOST: vectordb
+    depends_on:
+      vectordb:
+        condition: service_healthy
+
+volumes:
+  app-data:
+  db:
+
+networks:
+  db_network:
+    internal: true
+    driver: bridge
+  frontend:
+    driver: bridge
+
+# To initialise, open terminal in the parent folder "podman compose -f compose-local.yml up -d"
+# go to localhost:8001
+# To stop and remove, open terminal in the parent folder "podman compose -f compose-local.yml down -d"

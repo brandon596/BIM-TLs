@@ -1,0 +1,8 @@
+.venv/
+.env
+.github
+myapp/__pycache__/
+sent/
+persistent/logs/
+persistent/chroma/
+.vscode/

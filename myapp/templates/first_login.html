@@ -51,6 +51,7 @@
                 e.preventDefault();
 
                 let passwordsMatch = true;
+                let validUsername = true;
                 const userData = {};
 
                 // Check if passwords match for all users
@@ -64,12 +65,25 @@
                         $(this).find('input[type="password"]').eq(1).css('border-color', 'red');
                     } else {
                         $(this).find('input[type="password"]').eq(1).css('border-color', '#ccc');
+                    }
+
+                    if (username === "firstlogin") {
+                        validUsername = false;
+                        $(this).find('input[type="text"]').css('border-color', 'red');
+                    } else {
+                        $(this).find('input[type="text"]').css('border-color', '#ccc');
+                    }
+                    if (passwordsMatch && validUsername) {
                         userData[username] = password;
                     }
                 });
 
                 if (!passwordsMatch) {
                     alert('Please ensure all passwords match.');
+                    return;
+                }
+                if (!validUsername) {
+                    alert('Please use a different username.');
                     return;
                 }
                 $.ajax({

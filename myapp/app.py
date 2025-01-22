@@ -116,7 +116,7 @@ def deleteUser(username:str):
     dumpUsers(users)
     dumpRoles(roles)
 
-def create_collection(chroma_client):
+def create_blank_collection(chroma_client):
     created_collection = chroma_client.create_collection(
         name="Video_Titles_Embeddings",
         metadata={"hnsw:space": "cosine"}
@@ -186,13 +186,15 @@ def upsert_collection(new_collection, file_path):
     return new_collection
 
 def initialise_db():
-    chroma_client = chromadb.PersistentClient(path="persistent/chroma")
+    # chroma_client = chromadb.PersistentClient(path="persistent/chroma") # Use this for testing
+    # Connect to VectorDB
+    chroma_client = chromadb.HttpClient(host=os.environ.get("CHROMA_HOST")) # Use this for deployment
     try:
+        # Try to get existing collection
         collection = chroma_client.get_collection("Video_Titles_Embeddings")
     except chromadb.errors.InvalidCollectionException:
-        empty_collection = create_collection(chroma_client)
-        collection = load_empty_collection(empty_collection)
-        logger.info("Collection created")
+        collection = create_blank_collection(chroma_client)
+        logger.info("Collection Video_Titles_Embeddings initialised")
     return collection
 
 collection = initialise_db()
@@ -260,6 +262,7 @@ def query_db(queery):
         }
         rowed_output = [
             {
+                "Id": "",
                 "Title": title,
                 "URL": url
             } for title, url in zip(pre_output["Title"], pre_output["Subtitle"])
@@ -394,19 +397,32 @@ def get_query_logs():
 @app.route("/video_table", methods=["GET","POST"])
 @auth.login_required(role="admin")
 def all_videos():
-    query = request.form.get("search")
-    toEmbed = request.form.get("embed")
-    if toEmbed:
-        toEmbed = "checked"
-    if query and not toEmbed:
-        return render_template("table.html", video_table=simple_search(query), query=query, ticked=toEmbed)
-    elif query and toEmbed:
-        return render_template("table.html", video_table=query_db(query).get("asRows"), query=query, ticked=toEmbed)
-    elif get_all_videos():
-        return render_template("table.html", video_table=get_all_videos(), ticked=toEmbed)
-    else:
-        return render_template("table.html")
+    if request.method == "POST":
+        # Process form data
+        query = request.form.get("search")
+        toEmbed = request.form.get("embed")
+        video_table = None
 
+        try:
+            if query:
+                if toEmbed:
+                    # Perform semantic search
+                    video_table = query_db(query).get("asRows")
+                else:
+                    # Perform simple search
+                    video_table = simple_search(query)
+            else:
+                # Get all videos if no query is provided
+                video_table = get_all_videos()
+
+            # Return search results as JSON
+            return jsonify({"success": True, "video_table": video_table})
+
+        except Exception as e:
+            # Log the error and return an error message
+            app.logger.error(f"Error in /video_table: {e}")
+            return jsonify({"success": False, "error": "An error occurred while processing your request."})
+    return render_template("table.html")
 @app.route('/manage_videos')
 @auth.login_required(role="admin")
 def manage_videos():
@@ -420,7 +436,10 @@ def manage_videos():
 def add_video():
     data = load_data(auth.current_user())
     new_video = request.json
-    new_video['Id'] = max(video['Id'] for video in data) + 1 if data else 1
+    if data:
+        new_video['Id'] = max(video['Id'] for video in data) + 1
+    else:
+        new_video['Id'] = 1
     data.append(new_video)
     save_data(data, auth.current_user())
     return jsonify(new_video), 201
@@ -588,7 +607,7 @@ def profile():
 def update_admin_account():
     try:
         newAccount:dict = request.json
-        if not OldPasswordisCorrect(auth.current_user(), newAccount["oldPassword"]):
+        if not verify_password(auth.current_user(), newAccount["oldPassword"]):
             return jsonify({"error": "Old Password is wrong."}), 400
         elif newAccount["username"] == auth.current_user():
             updatePassword(auth.current_user(), generate_password_hash(newAccount["newPassword"]))

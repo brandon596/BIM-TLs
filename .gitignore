@@ -4,10 +4,8 @@ chroma/
 logs/
 myapp/__pycache__/
 sent/
-generate_hash.py
 all-MiniLM-L6-v2/
-Dockerfile
 persistent/chroma/
 persistent/logs/
-compose.yml
-.dockerignore
+.vscode/
+extras/

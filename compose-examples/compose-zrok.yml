@@ -1,0 +1,114 @@
+#Free tunnel with zrok.io
+
+name: bim-chat-app
+
+services:
+  # set file ownership
+  zrok-init:
+    image: busybox
+    # matches uid:gid of "ziggy" in zrok container image
+    command: chown -Rc 2171:2171 /mnt/
+    user: root
+    volumes:
+      - zrok_env:/mnt
+
+  # enable zrok environment
+  zrok-enable:
+    image: ${ZROK_CONTAINER_IMAGE:-docker.io/openziti/zrok}
+    depends_on:
+      zrok-init:
+        condition: service_completed_successfully
+    entrypoint: zrok-enable.bash
+    volumes:
+      - zrok_env:/mnt
+    environment:
+      HOME: /mnt
+      ZROK_ENABLE_TOKEN: # Get from zrok.io
+      ZROK_API_ENDPOINT: 
+      ZROK_ENVIRONMENT_NAME: 
+
+  # reserve zrok frontend subdomain and start sharing the target
+  zrok-share:
+    image: ${ZROK_CONTAINER_IMAGE:-docker.io/openziti/zrok}
+    restart: unless-stopped
+    entrypoint: zrok-share.bash
+    depends_on:
+      zrok-enable:
+        condition: service_completed_successfully
+    volumes:
+      - zrok_env:/mnt
+    networks:
+      - frontend
+    environment:
+      # internal configuration
+      HOME: /mnt  # zrok homedir in container
+
+      # most relevant options
+      ZROK_UNIQUE_NAME:     # name is used to construct frontend domain name, e.g. "myapp" in "myapp.share.zrok.io"
+      ZROK_BACKEND_MODE: proxy   # web, caddy, drive, proxy
+      ZROK_TARGET: http://app:8001         # backend target, is a path in container filesystem unless proxy mode
+      ZROK_INSECURE:        # "--insecure" if proxy target has unverifiable TLS server certificate
+      ZROK_OAUTH_PROVIDER:  # google, github
+      ZROK_OAUTH_EMAILS:    # allow space-separated list of OAuth email address glob patterns
+      ZROK_BASIC_AUTH:      # username:password, mutually-exclusive with ZROK_OAUTH_PROVIDER
+
+      # least relevant options
+      ZROK_VERBOSE:           # "--verbose"
+      ZROK_SHARE_OPTS:        # additional arguments to "zrok reserve public" command
+      ZROK_FRONTENDS:         # "public"
+      PFXLOG_NO_JSON: "true"  # suppress JSON logging format
+
+
+  vectordb:
+    image: docker.io/chromadb/chroma
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: db
+        target: /chroma/chroma
+    networks:
+      - db_network
+    healthcheck:
+      test: ["CMD", "curl", "localhost:8000"]
+      interval: 2s
+      start_period: 5s  # Time to wait for DB startup before starting the app
+      retries: 1
+
+  app:
+    image: docker.io/brandon596/bim-chat
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: app-data
+        target: /app/persistent
+    ports:
+      - 8080:8001
+    networks:
+      - db_network
+      - frontend
+    environment:
+      YOUTUBE_DATA_API_KEY: ${YOUTUBE_DATA_API_KEY} # You can get this from https://console.cloud.google.com/apis/library/youtube.googleapis.com
+      SECRET_KEY: ${SECRET_KEY} # any long string
+      API_KEY: ${API_KEY} # any long string, this is for the semantic search API
+      PLAYLIST_ID: ${PLAYLIST_ID} # YT Playlist ID
+      DIRECT_LINE_SECRET: ${DIRECT_LINE_SECRET}
+      CHROMA_HOST: vectordb
+    depends_on:
+      vectordb:
+        condition: service_healthy
+      
+volumes:
+  zrok_env:
+  app-data:
+  db:
+
+networks:
+  db_network:
+    internal: true
+    driver: bridge
+  frontend:
+    driver: bridge
+
+# To initialise, open terminal in the parent folder "podman compose -f compose-zrok.yml up -d"
+# Get link by going to api.zrok.io
+# To stop and remove, open terminal in the parent folder "podman compose -f compose-zrok.yml down -d"

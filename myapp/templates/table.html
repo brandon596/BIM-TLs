@@ -3,33 +3,125 @@
 {% block active_table %}active{% endblock %}
 {% block content %}
 <h1>Video Table</h1>
-<form action="/video_table" method="post">
-    <input type="text" name="search" id="search" placeholder="Search (case sensitive)" value="{{ query }}">
+<form id="searchForm">
+    <input type="text" name="search" id="search" placeholder="Search (case sensitive)">
     <div class="form-group">
-        <button title="Clear search bar" type="button" class="clear" onclick="document.getElementById('search').value=''">Clear</button>
+        <button title="Clear search bar" type="button" class="clear" onclick="clearSearch()">Clear</button>
         <button type="submit">Search</button>
         <label class="checkbox-label">
-            <input type="checkbox" name="embed" id="embed" {{ ticked }}>Semantic Search
+            <input type="checkbox" name="embed" id="embed">Semantic Search
         </label>
     </div>
 </form>
 <br>
-{% if video_table %}
-<table>
-    <tr>
-        <th>Id</th>
-        <th>Title</th>
-        <th>URL</th>
-    </tr>
-    {% for row in video_table %}
-    <tr>
-        <td>{{ row.Id }}</td>
-        <td>{{ row.Title }}</td>
-        <td><a href="{{ row.URL }}" target="_blank">{{ row.URL }}</a></td>
-    </tr>
-    {% endfor %}
-</table>
-{% else %}
-<p>No videos found</p>
-{% endif %}
+<div id="videoTableContainer">
+    <!-- Search results will be dynamically inserted here -->
+    <table id="videoTable">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Title</th>
+                <th>URL</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows will be added here by JavaScript -->
+        </tbody>
+    </table>
+    <p id="noResultsMessage" style="display: none;">No videos found</p>
+</div>
+
+<script>
+    // Fetch all videos when the page loads
+    document.addEventListener("DOMContentLoaded", function () {
+        fetchAllVideos();
+    });
+
+    // Handle form submission
+    document.getElementById("searchForm").addEventListener("submit", function (event) {
+        event.preventDefault(); // Prevent the form from submitting normally
+
+        // Get form data
+        const formData = new FormData(this);
+        const searchQuery = formData.get("search");
+        const embedSearch = formData.get("embed") ? "checked" : "";
+
+        // Send AJAX request to the server
+        fetch("/video_table", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-Requested-With": "XMLHttpRequest", // Identify the request as AJAX
+            },
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    // Update the table with search results
+                    updateTable(data.video_table);
+                } else {
+                    // Display an error message
+                    alert(data.error || "An error occurred.");
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+                alert("An error occurred while fetching search results.");
+            });
+    });
+
+    // Function to fetch all videos
+    function fetchAllVideos() {
+        fetch("/video_table", {
+            method: "POST",
+            body: new FormData(), // Empty form data to fetch all videos
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+            },
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    updateTable(data.video_table);
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+            });
+    }
+
+    // Function to update the table with search results
+    function updateTable(videoTable) {
+        const tableBody = document.querySelector("#videoTable tbody");
+        const noResultsMessage = document.getElementById("noResultsMessage");
+
+        // Clear existing rows
+        tableBody.innerHTML = "";
+
+        if (videoTable && videoTable.length > 0) {
+            // Add new rows
+            videoTable.forEach((row) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${row.Id}</td>
+                    <td>${row.Title}</td>
+                    <td><a href="${row.URL}" target="_blank">${row.URL}</a></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Hide the "No videos found" message
+            noResultsMessage.style.display = "none";
+        } else {
+            // Show the "No videos found" message
+            noResultsMessage.style.display = "block";
+        }
+    }
+
+    // Function to clear the search bar and fetch all videos
+    function clearSearch() {
+        document.getElementById("search").value = "";
+        fetchAllVideos();
+    }
+</script>
 {% endblock %}

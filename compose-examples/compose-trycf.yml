@@ -1,0 +1,65 @@
+## Using Trycloudflare free tunnel
+
+name: bim-chat-app
+services:
+
+  vectordb:
+    image: docker.io/chromadb/chroma
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: db
+        target: /chroma/chroma
+    networks:
+      - db_network
+    healthcheck:
+      test: ["CMD", "curl", "localhost:8000"]
+      interval: 2s
+      start_period: 5s  # Time to wait for DB startup before starting the app
+      retries: 1
+
+  app:
+    image: docker.io/brandon596/bim-chat
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: app-data
+        target: /app/persistent
+    ports:
+      - 8080:8001
+    networks:
+      - db_network
+      - frontend
+    environment:
+      YOUTUBE_DATA_API_KEY: ${YOUTUBE_DATA_API_KEY} # You can get this from https://console.cloud.google.com/apis/library/youtube.googleapis.com
+      SECRET_KEY: ${SECRET_KEY} # any long string
+      API_KEY: ${API_KEY} # any long string, this is for the semantic search API
+      PLAYLIST_ID: ${PLAYLIST_ID} # YT Playlist ID
+      DIRECT_LINE_SECRET: ${DIRECT_LINE_SECRET}
+      CHROMA_HOST: vectordb
+    depends_on:
+      vectordb:
+        condition: service_healthy
+
+  cloudflaretunnel:
+    image: docker.io/cloudflare/cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --protocol http2 --url app:8001 # Protocol flag is http2 only if UDP is blocked else remove protocal flag
+    networks:
+      - frontend
+  # Cloudflare link can be found in the logs 
+
+volumes:
+  app-data:
+  db:
+
+networks:
+  db_network:
+    internal: true
+    driver: bridge
+  frontend:
+    driver: bridge
+
+# To initialise, open terminal in the parent folder "podman compose -f compose-trycf.yml up -d"
+# Get link by podman logs cloudflaretunnel-1 or use Podman Desktop
+# To stop and remove, open terminal in the parent folder "podman compose -f compose-trycf.yml down -d"
