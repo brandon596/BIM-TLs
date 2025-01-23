@@ -49,7 +49,6 @@ services:
     command: tunnel --no-autoupdate --protocol http2 run # Protocol flag is http2 only if UDP is blocked else remove protocal flag
     networks:
       - frontend
-  # Cloudflare link can be found in the logs
 
 volumes:
   app-data:
@@ -64,4 +63,4 @@ networks:
 
 # To initialise, open terminal in the parent folder "podman compose -f compose-cloudflare.yml up -d"
 # URL can be found in your cloudflare tunnel dashboard
-# To stop and remove, open terminal in the parent folder "podman compose -f compose-cloudflare.yml down -d"
+# To stop and remove, open terminal in the parent folder "podman compose -f compose-cloudflare.yml down"

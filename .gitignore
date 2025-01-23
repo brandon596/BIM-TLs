@@ -9,3 +9,4 @@ persistent/chroma/
 persistent/logs/
 .vscode/
 extras/
+compose-examples/compose.yml

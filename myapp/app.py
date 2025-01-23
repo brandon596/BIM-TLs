@@ -9,6 +9,7 @@ import os
 from logger import logger, parse_log_folder_files, parse_app_log
 from collections import Counter
 import requests
+import time
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY")
@@ -123,29 +124,7 @@ def create_blank_collection(chroma_client):
     )
     return created_collection
 
-def load_empty_collection(empty_collection):
-    with open(AUTODESK_VID_PATH, "r") as file:
-        video_links = json.load(file)
-    yt_id_start = len(video_links)+1
-    yt_vids_links = get_processed_playlist(PLAYLIST_ID, YT_API_KEY, yt_id_start)
-    video_links += yt_vids_links
-    titles = []
-    metadatas = []
-    for row in video_links:
-        titles.append(row["Title"].strip())
-        metadatas.append({"URL": row["Video_URL"], "Source": row["Page_URL"], "actual_id": row["Id"], "isTitle": True, "onYoutube": True if row["Id"] >= yt_id_start else False})
-        if row["Description"] != "":
-            alt_titles = row["Description"].split(" | ")
-            for title in alt_titles:
-                titles.append(title.strip())
-                metadatas.append({"URL": row["Video_URL"], "Source": row["Page_URL"], "actual_id": row["Id"], "isTitle": False, "onYoutube": True if row["Id"] >= yt_id_start else False})
-    ids = [str(i+1) for i in range(len(titles))]
-    empty_collection.add(
-        documents=titles,
-        ids=ids,
-        metadatas=metadatas
-    )
-    return empty_collection #its not empty here if everything above goes well
+
 
 def upsert_collection(new_collection, file_path):
     old_ids = new_collection.get(
@@ -188,6 +167,7 @@ def upsert_collection(new_collection, file_path):
 def initialise_db():
     # chroma_client = chromadb.PersistentClient(path="persistent/chroma") # Use this for testing
     # Connect to VectorDB
+    time.sleep(5)
     chroma_client = chromadb.HttpClient(host=os.environ.get("CHROMA_HOST")) # Use this for deployment
     try:
         # Try to get existing collection
