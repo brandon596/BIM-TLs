@@ -44,7 +44,7 @@ services:
       HOME: /mnt  # zrok homedir in container
 
       # most relevant options
-      ZROK_UNIQUE_NAME:     # name is used to construct frontend domain name, e.g. "myapp" in "myapp.share.zrok.io"
+      ZROK_UNIQUE_NAME: # name is used to construct frontend domain name, e.g. "myapp" in "myapp.share.zrok.io"
       ZROK_BACKEND_MODE: proxy   # web, caddy, drive, proxy
       ZROK_TARGET: http://app:8001         # backend target, is a path in container filesystem unless proxy mode
       ZROK_INSECURE:        # "--insecure" if proxy target has unverifiable TLS server certificate
@@ -93,6 +93,8 @@ services:
       PLAYLIST_ID: ${PLAYLIST_ID} # YT Playlist ID
       DIRECT_LINE_SECRET: ${DIRECT_LINE_SECRET}
       CHROMA_HOST: vectordb
+      TEMPERATURE: 0.14
+      THRESHOLD: 0.228
     depends_on:
       vectordb:
         condition: service_healthy

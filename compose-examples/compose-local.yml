@@ -37,6 +37,8 @@ services:
       PLAYLIST_ID: ${PLAYLIST_ID} # YT Playlist ID
       DIRECT_LINE_SECRET: ${DIRECT_LINE_SECRET}
       CHROMA_HOST: vectordb
+      TEMPERATURE: 0.14
+      THRESHOLD: 0.228
     depends_on:
       vectordb:
         condition: service_healthy

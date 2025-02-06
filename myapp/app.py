@@ -36,8 +36,8 @@ def dumpRoles(roles:dict):
 AUTODESK_VID_PATH: str = "persistent/json_data/Autodesk_Videos.json"
 YT_API_KEY: str = os.environ.get("YOUTUBE_DATA_API_KEY")
 PLAYLIST_ID: str = os.environ.get("PLAYLIST_ID")
-temperature: float=0.0715
-threshold: float=0.389
+temperature: float=float(os.environ.get("TEMPERATURE"))
+threshold: float=float(os.environ.get("THRESHOLD"))
 
 # functions for json file for app states
 
@@ -222,7 +222,7 @@ def get_outputs(unique_actual_ids):
 def query_db(queery):
     results = collection.query(
         query_texts=queery,
-        n_results=min(collection.count(), 50)
+        n_results=min(collection.count(), 50) # max 50 to prevent weird errors from occuring
     )
     rowed_output = None
     results.get("distances")[0] = invert_and_softmax(results.get("distances")[0])
