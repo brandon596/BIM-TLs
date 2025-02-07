@@ -4,7 +4,9 @@ RUN useradd -m myuser
 
 WORKDIR /app
 
-COPY /all-MiniLM-L6-v2 /home/myuser/.cache/chroma/onnx_models/all-MiniLM-L6-v2
+# Comment this out if you do not have the model in your directory 
+COPY /all-MiniLM-L6-v2 /home/myuser/.cache/chroma/onnx_models/all-MiniLM-L6-v2 
+
 
 COPY requirements.txt requirements.txt
 

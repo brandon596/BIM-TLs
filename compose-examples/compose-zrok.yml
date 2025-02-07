@@ -75,7 +75,7 @@ services:
       retries: 1
 
   app:
-    image: docker.io/brandon596/bim-chat
+    image: docker.io/brandon596/bim-chat # Name of the image
     restart: unless-stopped
     volumes:
       - type: volume
@@ -112,5 +112,6 @@ networks:
     driver: bridge
 
 # To initialise, open terminal in the parent folder "podman compose -f compose-zrok.yml up -d"
+# If there are any problems encounted run "podman compose -f compose-zrok.yml restart" at least 2 times especially for this file
 # Get link by going to api.zrok.io
-# To stop and remove, open terminal in the parent folder "podman compose -f compose-zrok.yml down -d"
+# To stop and remove, open terminal in the parent folder "podman compose -f compose-zrok.yml down"

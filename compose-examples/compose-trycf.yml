@@ -19,10 +19,10 @@ services:
       retries: 1
 
   app:
-    image: docker.io/brandon596/bim-chat
+    image: docker.io/brandon596/bim-chat # Name of the image
     restart: unless-stopped
     volumes:
-      - type: bind
+      - type: volume
         source: app-data
         target: /app/persistent
     ports:
@@ -63,5 +63,5 @@ networks:
     driver: bridge
 
 # To initialise, open terminal in the parent folder "podman compose -f compose-trycf.yml up -d"
-# Get link by podman logs cloudflaretunnel-1 or use Podman Desktop
+# Get link by running "podman compose -f compose-trycf.yml logs cloudflaretunnel" or use Podman Desktop and open the logs from the cloudflare container
 # To stop and remove, open terminal in the parent folder "podman compose -f compose-trycf.yml down -d"
