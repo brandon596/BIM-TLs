@@ -1,10 +1,12 @@
+# For testing the load of the server 
+
 import asyncio
 import httpx
 import os
 
 async def test_semantic_search(query="what is the project browser?", num=10):
     url = "http://localhost:5000/api/semantic_search"  # Replace with your actual URL
-    header = {"Authorization": os.environ.get("API_KEY")}  # Replace with your actual headers
+    header = {"Authorization": os.environ.get("API_KEY")}  
     body = {"query": query}  # Replace with your actual body structure
 
     async with httpx.AsyncClient() as client:
@@ -17,4 +19,4 @@ async def test_semantic_search(query="what is the project browser?", num=10):
 
 
 if __name__ == "__main__":
-    asyncio.run(test_semantic_search(num=200))
+    asyncio.run(test_semantic_search(num=200)) # Number of simultaneous requests
