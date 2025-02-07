@@ -75,7 +75,7 @@ services:
       retries: 1
 
   app:
-    image: docker.io/brandon596/bim-chat # Name of the image
+    image: ${APP_IMAGE_NAME} # Name of the image
     restart: unless-stopped
     volumes:
       - type: volume
